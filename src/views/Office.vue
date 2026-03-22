@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <div ref="canvasContainer" class="canvas"></div>
+    <canvas ref="canvasRef" class="canvas"></canvas>
     
     <div class="side-panel">
       <div class="panel-title">🐉 龙虾状态</div>
@@ -86,242 +86,297 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import * as THREE from 'three'
 
-const canvasContainer = ref(null)
+const canvasRef = ref(null)
 const systemStatus = ref('idle')
 const visitors = ref([
   { id: 1, name: '访客A', avatar: '🧑‍💻' },
   { id: 2, name: '访客B', avatar: '👨‍🔬' }
 ])
 
-let scene, camera, renderer, characters = [], serverLights = []
+let ctx, canvas
 let animationId = null
+let lastTime = 0
+const FPS = 15
+const frameTime = 1000 / FPS
 
-function init() {
-  const container = canvasContainer.value
-  if (!container) return
+// 像素比例 - 高清
+const PIXEL_SIZE = 3
 
-  scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x1a1a2e)
+// RPG角色配色方案 - 高清细腻
+const rpgStyles = [
+  { 
+    name: '剑士',
+    skin: '#FFD9B3', hair: '#5C3317', hairLight: '#8B6914',
+    armorMain: '#708090', armorLight: '#A0A0A0', armorDark: '#4A5568',
+    cape: '#8B0000', capeInside: '#DC143C',
+    weapon: '#C0C0C0', weaponDetail: '#808080', handle: '#4A3728'
+  },
+  { 
+    name: '法师',
+    skin: '#FFD9B3', hair: '#FFD700', hairLight: '#FFE44D',
+    armorMain: '#4B0082', armorLight: '#6A0DAD', armorDark: '#2E0050',
+    cape: '#2E0050', capeInside: '#4B0082',
+    weapon: '#9400D3', weaponDetail: '#BA55D3', handle: '#4A3728'
+  },
+  { 
+    name: '刺客',
+    skin: '#FFD9B3', hair: '#1C1C1C', hairLight: '#3D3D3D',
+    armorMain: '#1C1C1C', armorLight: '#3D3D3D', armorDark: '#0D0D0D',
+    cape: '#1A3A3A', capeInside: '#2F4F4F',
+    weapon: '#A0A0A0', weaponDetail: '#606060', handle: '#2D1F1F'
+  },
+  { 
+    name: '骑士',
+    skin: '#FFD9B3', hair: '#8B4513', hairLight: '#A0522D',
+    armorMain: '#D4AF37', armorLight: '#FFD700', armorDark: '#AA8800',
+    cape: '#1E3A5F', capeInside: '#4169E1',
+    weapon: '#C0C0C0', weaponDetail: '#808080', handle: '#4A3728'
+  },
+  { 
+    name: '弓箭手',
+    skin: '#FFD9B3', hair: '#8B4513', hairLight: '#A0522D',
+    armorMain: '#228B22', armorLight: '#32CD32', armorDark: '#006400',
+    cape: '#006400', capeInside: '#228B22',
+    weapon: '#8B4513', weaponDetail: '#A0522D', handle: '#4A3728'
+  }
+]
 
-  const width = container.clientWidth - 220
-  const height = container.clientHeight - 110
-  const aspect = width / height
+// 动画帧
+let frame = 0
 
-  camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000)
-  camera.position.set(0, 12, 25)
-  camera.lookAt(0, 2, 0)
-
-  renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setSize(width, height)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  container.appendChild(renderer.domElement)
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8))
-  const sun = new THREE.DirectionalLight(0xffffff, 0.5)
-  sun.position.set(20, 30, 20)
-  scene.add(sun)
-
-  createRoom()
-  createFurniture()
-  createCharacters()
-  createDecor()
-
-  animate()
+function drawPixel(x, y, color, size = PIXEL_SIZE) {
+  ctx.fillStyle = color
+  ctx.fillRect(x * size, y * size, size, size)
 }
 
-function box(w, h, d, color, x, y, z) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color, flatShading: true })
-  )
-  mesh.position.set(x, y, z)
-  return mesh
+function drawRect(x, y, w, h, color) {
+  ctx.fillStyle = color
+  ctx.fillRect(x * size, y * size, w * size, h * size)
 }
 
-function createRoom() {
-  for (let i = -8; i < 8; i++) {
-    for (let j = -6; j < 6; j++) {
-      const color = (i + j) % 2 === 0 ? 0xD4A574 : 0xC49A6C
-      scene.add(box(3, 0.2, 3, color, i * 3, 0, j * 3))
-    }
-  }
-  scene.add(box(50, 16, 0.5, 0xE8DCC4, 0, 8, -18))
-  scene.add(box(0.5, 16, 35, 0xD4C4A8, -25, 8, 0))
-  scene.add(box(0.5, 16, 35, 0xD4C4A8, 25, 8, 0))
-}
-
-function createFurniture() {
-  for (let i = 0; i < 5; i++) {
-    scene.add(box(0.3, 12, 1.2, 0xE8B4B8, -20 + i * 8, 10, -17.5))
-    scene.add(box(0.3, 12, 1.2, 0xE8B4B8, -16 + i * 8, 10, -17.5))
-    scene.add(box(4, 7, 0.3, 0x87CEEB, -18 + i * 8, 10, -17.8))
-  }
-
-  const deskPositions = [[-16, 4], [-8, 4], [0, 4], [8, 4], [16, 4]]
-  deskPositions.forEach((pos, i) => {
-    scene.add(box(4, 0.3, 2.5, 0xD4B86A, pos[0], 3.5, pos[1]))
-    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] - 1.7, 1.75, pos[1] - 1))
-    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] + 1.7, 1.75, pos[1] - 1))
-    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] - 1.7, 1.75, pos[1] + 1))
-    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] + 1.7, 1.75, pos[1] + 1))
-    scene.add(box(2, 1.5, 0.2, 0x333333, pos[0], 5, pos[1] - 1.2))
-    scene.add(box(1.5, 1, 0.1, i < 2 ? 0x00D9FF : 0x2A2A3A, pos[0], 5, pos[1] - 1.1))
-    scene.add(box(0.8, 0.2, 0.6, 0x444444, pos[0], 3.7, pos[1] + 0.5))
-    scene.add(box(1.5, 0.15, 0.8, 0x555555, pos[0], 3.7, pos[1] + 0.9))
-    scene.add(box(1.2, 0.25, 1.2, 0x4A6FA5, pos[0], 1, pos[1] + 1.8))
-    scene.add(box(1.2, 2, 0.25, 0x4A6FA5, pos[0], 2.2, pos[1] + 2.3))
-  })
-
-  scene.add(box(8, 1.5, 3, 0xC75D5D, -20, 0.75, -8))
-  scene.add(box(8, 2.5, 0.6, 0xC75D5D, -20, 2, -9.8))
-  scene.add(box(6, 1.2, 5, 0x8B9DC4, 18, 0.6, -10))
-  scene.add(box(6, 2.5, 0.6, 0xFFFFFF, 18, 1.8, -12.8))
-
-  for (let i = 0; i < 2; i++) {
-    scene.add(box(3, 10, 0.8, 0x8B4513, -23, 5, -5 + i * 12))
-    for (let j = 0; j < 7; j++) {
-      const colors = [0xE74C3C, 0x3498DB, 0x2ECC71, 0xF1C40F, 0x9B59B6, 0xE67E22, 0x1ABC9C]
-      scene.add(box(2.5, 0.6, 1.5, colors[j], -23, 1.3 + j * 1.3, -5 + i * 12))
-    }
-  }
-
-  scene.add(box(2, 3, 2, 0x6F4E37, 22, 1.5, 8))
-  scene.add(box(1.5, 0.6, 1.5, 0xCCCCCC, 22, 3.3, 8))
-  scene.add(box(4, 9, 2, 0x4A4A4A, 22, 4.5, -5))
-  for (let i = 0; i < 8; i++) {
-    const light = box(0.6, 0.6, 0.15, 0xFF0000, 22.5, 8 - i * 1, -3.9)
-    serverLights.push(light)
-    scene.add(light)
-  }
-
-  scene.add(box(2.5, 4, 2.5, 0x8B4513, -20, 2, 10))
-  scene.add(box(3, 3.5, 3.5, 0x4CAF50, -20, 5.5, 10))
-  scene.add(box(3, 1.5, 2.5, 0xFFA500, 14, 0.75, 10))
-  scene.add(box(0.8, 0.8, 0.8, 0xFF8800, 13, 1.8, 10.5))
-  scene.add(box(6, 4, 0.3, 0xE74C3C, 22, 12, -17.5))
-  scene.add(box(5, 3, 0.15, 0xFFFFFF, 22, 12, -17.35))
-  scene.add(box(2.5, 2.5, 0.3, 0xFFFFFF, -22, 15, -17.5))
-  scene.add(box(10, 2.5, 0.4, 0xFFA500, 0, 14, -17.5))
-}
-
-function createCharacters() {
-  const positions = [[-16, 8], [-8, 8], [0, 8], [8, 8], [16, 8]]
+// 绘制高清RPG角色
+function drawCharacter(style, x, y, animPhase) {
+  const s = style
+  const bounce = Math.floor(animPhase) % 2 === 0 ? 0 : -1
+  const legPhase = Math.floor(animPhase) % 4
   
-  // RPG角色风格：剑士、法师、刺客、骑士、弓箭手
-  const rpgStyles = [
-    { name: '剑士', armor: 0x708090, skin: 0xFFDBAC, hair: 0x8B4513, weapon: 0xC0C0C0, cape: 0xDC143C },
-    { name: '法师', armor: 0x4B0082, skin: 0xFFDBAC, hair: 0xFFD700, weapon: 0x9400D3, cape: 0x4B0082 },
-    { name: '刺客', armor: 0x1C1C1C, skin: 0xFFDBAC, hair: 0x000000, weapon: 0xC0C0C0, cape: 0x2F4F4F },
-    { name: '骑士', armor: 0xD4AF37, skin: 0xFFDBAC, hair: 0xD2691E, weapon: 0xC0C0C0, cape: 0x4169E1 },
-    { name: '弓箭手', armor: 0x228B22, skin: 0xFFDBAC, hair: 0x8B4513, weapon: 0x8B4513, cape: 0x228B22 },
+  // === 腿部 ===
+  const legOffset1 = legPhase === 1 ? -1 : legPhase === 3 ? 1 : 0
+  const legOffset2 = legPhase === 3 ? -1 : legPhase === 1 ? 1 : 0
+  
+  // 左腿
+  drawRect(x + 8, y + 28 + bounce, 5, 8, s.armorDark)
+  drawRect(x + 8, y + 36 + bounce, 5, 3, s.handle)
+  drawRect(x + 7, y + 38 + bounce, 7, 2, s.armorMain) // 靴子
+  
+  // 右腿
+  drawRect(x + 15, y + 28 + bounce + legOffset2, 5, 8, s.armorDark)
+  drawRect(x + 15, y + 36 + bounce + legOffset2, 5, 3, s.handle)
+  drawRect(x + 14, y + 38 + bounce + legOffset2, 7, 2, s.armorMain)
+  
+  // === 身体/盔甲 ===
+  drawRect(x + 6, y + 16 + bounce, 16, 13, s.armorMain) // 主体
+  drawRect(x + 5, y + 18 + bounce, 2, 10, s.armorDark) // 左边暗
+  drawRect(x + 21, y + 18 + bounce, 2, 10, s.armorDark) // 右边暗
+  drawRect(x + 6, y + 14 + bounce, 16, 3, s.armorLight) // 腰部亮
+  drawRect(x + 12, y + 18 + bounce, 4, 6, s.armorLight) // 胸甲中心
+  drawRect(x + 10, y + 17 + bounce, 8, 2, s.weaponDetail) // 护心镜
+  
+  // === 披风 ===
+  drawRect(x + 4, y + 14 + bounce, 3, 18, s.cape)
+  drawRect(x + 21, y + 14 + bounce, 3, 18, s.cape)
+  drawRect(x + 5, y + 16 + bounce, 2, 14, s.capeInside)
+  drawRect(x + 21, y + 16 + bounce, 2, 14, s.capeInside)
+  
+  // === 手臂 ===
+  // 左臂
+  drawRect(x + 2, y + 17 + bounce, 4, 10, s.armorMain)
+  drawRect(x + 1, y + 26 + bounce, 3, 4, s.skin) // 手
+  
+  // 右臂
+  drawRect(x + 22, y + 17 + bounce, 4, 10, s.armorMain)
+  drawRect(x + 24, y + 26 + bounce, 3, 4, s.skin)
+  
+  // === 武器 ===
+  if (s.name === '剑士' || s.name === '刺客' || s.name === '骑士') {
+    // 剑
+    drawRect(x + 26, y + 10 + bounce, 2, 14, s.weapon) // 剑刃
+    drawRect(x + 26, y + 8 + bounce, 2, 3, s.weaponDetail) // 剑尖
+    drawRect(x + 26, y + 24 + bounce, 2, 3, s.handle) // 剑柄
+    drawRect(x + 24, y + 26 + bounce, 6, 2, s.weaponDetail) // 护手
+  } else if (s.name === '法师') {
+    // 法杖
+    drawRect(x + 26, y + 6 + bounce, 2, 22, s.handle)
+    drawRect(x + 24, y + 4 + bounce, 6, 6, s.weapon) // 顶部宝石
+    drawRect(x + 25, y + 5 + bounce, 4, 4, s.weaponDetail)
+    drawRect(x + 26, y + 3 + bounce, 2, 2, '#FFFFFF') // 宝石高光
+  } else if (s.name === '弓箭手') {
+    // 弓
+    drawRect(x + 26, y + 8 + bounce, 2, 16, s.weapon) // 弓柄
+    drawRect(x + 23, y + 7 + bounce, 2, 2, s.weapon) // 弓上端
+    drawRect(x + 23, y + 23 + bounce, 2, 2, s.weapon) // 弓下端
+    // 弓弦
+    drawRect(x + 24, y + 8 + bounce, 1, 16, '#CCCCCC')
+  }
+  
+  // === 头部 ===
+  drawRect(x + 9, y + 2 + bounce, 10, 10, s.skin) // 脸
+  
+  // 头发
+  drawRect(x + 8, y + bounce, 12, 4, s.hair)
+  drawRect(x + 7, y + 1 + bounce, 2, 5, s.hair)
+  drawRect(x + 19, y + 1 + bounce, 2, 5, s.hair)
+  drawRect(x + 9, y - 1 + bounce, 10, 2, s.hair)
+  drawRect(x + 11, y - 2 + bounce, 6, 2, s.hairLight) // 头发高光
+  
+  // 头盔
+  drawRect(x + 8, y - 1 + bounce, 12, 4, s.armorMain)
+  drawRect(x + 10, y - 3 + bounce, 8, 3, s.armorMain)
+  drawRect(x + 13, y - 4 + bounce, 2, 2, s.armorLight) // 头盔羽毛/装饰
+  drawRect(x + 12, y + 1 + bounce, 4, 3, s.armorDark) // 头盔阴影
+  
+  // 眼睛
+  drawRect(x + 11, y + 5 + bounce, 2, 2, '#1A1A1A')
+  drawRect(x + 15, y + 5 + bounce, 2, 2, '#1A1A1A')
+  drawRect(x + 11, y + 5 + bounce, 1, 1, '#FFFFFF') // 眼神高光
+  drawRect(x + 15, y + 5 + bounce, 1, 1, '#FFFFFF')
+  
+  // 嘴巴
+  drawRect(x + 13, y + 9 + bounce, 2, 1, '#CC8888')
+}
+
+// 绘制房间背景
+function drawRoom() {
+  // 地板 - 细腻木纹
+  for (let i = 0; i < 40; i++) {
+    for (let j = 0; j < 25; j++) {
+      const color = (i + j) % 2 === 0 ? '#C9A86C' : '#B8956A'
+      drawRect(i, j, 1, 1, color)
+    }
+  }
+  
+  // 墙壁
+  drawRect(0, 0, 40, 3, '#D4C4A8') // 上墙
+  drawRect(0, 0, 2, 25, '#C4B498') // 左墙
+  drawRect(38, 0, 2, 25, '#C4B498') // 右墙
+  
+  // 墙纸纹理
+  for (let i = 2; i < 38; i++) {
+    for (let j = 3; j < 20; j++) {
+      if (j % 4 === 0) {
+        drawRect(i, j, 1, 1, '#E8DCC4')
+      }
+    }
+  }
+}
+
+// 绘制家具
+function drawFurniture() {
+  // 5个工作位
+  const deskPositions = [
+    [4, 8], [10, 8], [16, 8], [22, 8], [28, 8]
   ]
   
-  positions.forEach((pos, i) => {
-    const s = rpgStyles[i]
-    const g = new THREE.Group()
+  deskPositions.forEach((pos, idx) => {
+    // 桌子
+    drawRect(pos[0], pos[1] + 3, 10, 1, '#8B6914')
+    drawRect(pos[0], pos[1] + 4, 1, 4, '#5C4010') // 桌腿
+    drawRect(pos[0] + 9, pos[1] + 4, 1, 4, '#5C4010')
     
-    // 腿部盔甲
-    g.add(box(0.7, 1.2, 0.6, s.armor, -0.35, 0.6, 0))
-    g.add(box(0.7, 1.2, 0.6, s.armor, 0.35, 0.6, 0))
-    // 靴子
-    g.add(box(0.8, 0.4, 0.9, 0x3D3D3D, -0.35, 0.2, 0.05))
-    g.add(box(0.8, 0.4, 0.9, 0x3D3D3D, 0.35, 0.2, 0.05))
+    // 显示器
+    drawRect(pos[0] + 2, pos[1], 6, 4, '#2A2A3A')
+    drawRect(pos[0] + 2, pos[1], 6, 3, idx < 2 ? '#00D9FF' : '#1A1A2A') // 屏幕
+    drawRect(pos[0] + 4, pos[1] + 4, 2, 1, '#4A4A5A') // 底座
+    drawRect(pos[0] + 3, pos[1] + 5, 4, 1, '#3A3A4A')
     
-    // 身体盔甲
-    g.add(box(1.8, 2, 1, s.armor, 0, 2.4, 0))
-    // 盔甲细节
-    g.add(box(1.6, 0.3, 1.1, 0xFFFFFF, 0, 3.2, 0))
-    g.add(box(0.8, 0.8, 0.2, 0xFFD700, 0, 2.4, 0.55))
+    // 键盘
+    drawRect(pos[0] + 3, pos[1] + 2, 4, 1, '#4A4A5A')
     
-    // 披风
-    g.add(box(0.2, 2.5, 1.2, s.cape, -1.05, 2.5, 0))
-    g.add(box(0.2, 2.5, 1.2, s.cape, 1.05, 2.5, 0))
-    
-    // 手臂
-    g.add(box(0.5, 1.5, 0.5, s.armor, -1.15, 2.5, 0))
-    g.add(box(0.5, 1.5, 0.5, s.armor, 1.15, 2.5, 0))
-    // 手
-    g.add(box(0.4, 0.4, 0.4, s.skin, -1.15, 1.5, 0))
-    g.add(box(0.4, 0.4, 0.4, s.skin, 1.15, 1.5, 0))
-    
-    // 武器 - 剑
-    if (i === 0 || i === 2 || i === 3) {
-      g.add(box(0.15, 2.5, 0.15, s.weapon, 1.4, 2.8, 0))
-      g.add(box(0.4, 0.4, 0.15, 0x8B4513, 1.4, 1.2, 0))
-      g.add(box(0.5, 0.1, 0.2, 0xFFD700, 1.4, 1.0, 0))
-    }
-    // 法杖
-    if (i === 1) {
-      g.add(box(0.2, 3, 0.2, 0x8B4513, 1.4, 3, 0))
-      g.add(box(0.4, 0.4, 0.4, s.weapon, 1.4, 4.8, 0))
-    }
-    // 弓
-    if (i === 4) {
-      g.add(box(0.15, 2.2, 0.15, s.weapon, 1.4, 3, 0))
-      g.add(box(0.6, 0.15, 0.1, 0x8B4513, 1.4, 3.5, 0.3))
-      g.add(box(0.6, 0.15, 0.1, 0x8B4513, 1.4, 2.5, 0.3))
-    }
-    
-    // 头部
-    g.add(box(1, 1, 0.9, s.skin, 0, 4.5, 0))
-    // 头盔
-    g.add(box(1.1, 0.8, 1, s.armor, 0, 5.0, 0))
-    g.add(box(0.3, 0.5, 0.3, s.armor, 0, 5.5, 0.5))
-    g.add(box(0.25, 0.8, 0.1, 0xFFFFFF, 0, 5.2, 0.55))
-    
-    // 头发
-    g.add(box(1, 0.4, 0.9, s.hair, 0, 5.3, -0.1))
-    
-    // 眼睛
-    g.add(box(0.25, 0.15, 0.1, 0x000000, -0.25, 4.55, 0.45))
-    g.add(box(0.25, 0.15, 0.1, 0x000000, 0.25, 4.55, 0.45))
-
-    g.position.set(pos[0], 0, pos[1])
-    g.userData = { baseZ: pos[1], walkZ: pos[1] + 4, isWorking: false, index: i }
-    scene.add(g)
-    characters.push(g)
+    // 椅子
+    drawRect(pos[0] + 4, pos[1] + 6, 3, 1, '#5D4037')
+    drawRect(pos[0] + 5, pos[1] + 7, 1, 2, '#3E2723')
   })
-}
-
-function createDecor() {}
-
-function updateCharacters() {
-  const time = Date.now() * 0.001
-  const isWorking = systemStatus.value === 'working'
   
-  characters.forEach((char, i) => {
-    if (isWorking) {
-      char.position.y = Math.sin(time * 8 + i * 0.5) * 0.15
-      char.position.z = char.userData.walkZ + Math.sin(time * 1.2) * 1.5
-    } else {
-      char.scale.setScalar(1 + Math.sin(time * 2 + i) * 0.02)
-      char.position.z = char.userData.baseZ
-      char.position.y = 0
-    }
-  })
-
-  const blink = Math.sin(time * 4) > 0
-  serverLights.forEach(light => {
-    light.material.color.setHex(blink ? 0xFF0000 : 0x550000)
-  })
+  // 窗帘
+  for (let i = 0; i < 5; i++) {
+    drawRect(2 + i * 7, 2, 2, 18, '#E8B4B8')
+    drawRect(3 + i * 7, 2, 1, 18, '#F0C8CC')
+  }
+  // 窗户
+  drawRect(3, 3, 5, 8, '#87CEEB')
+  drawRect(10, 3, 5, 8, '#87CEEB')
+  drawRect(17, 3, 5, 8, '#87CEEB')
+  drawRect(24, 3, 5, 8, '#87CEEB')
+  drawRect(31, 3, 5, 8, '#87CEEB')
+  
+  // 沙发
+  drawRect(2, 16, 8, 2, '#8B4513')
+  drawRect(2, 15, 2, 3, '#A0522D')
+  drawRect(8, 15, 2, 3, '#A0522D')
+  drawRect(2, 14, 8, 2, '#A0522D')
+  
+  // 书架
+  drawRect(2, 6, 3, 10, '#654321')
+  for (let i = 0; i < 4; i++) {
+    drawRect(2, 7 + i * 2, 2, 1, '#E74C3C')
+    drawRect(2, 8 + i * 2, 2, 1, '#3498DB')
+  }
+  
+  // 服务器机柜
+  drawRect(34, 10, 4, 12, '#2A2A2A')
+  for (let i = 0; i < 6; i++) {
+    drawRect(35, 12 + i * 2, 2, 1, '#FF0000')
+  }
+  
+  // 咖啡机
+  drawRect(32, 17, 3, 4, '#6F4E37')
+  drawRect(32, 16, 3, 1, '#A0A0A0')
+  
+  // 盆栽
+  drawRect(6, 18, 2, 3, '#8B4513')
+  drawRect(5, 15, 4, 4, '#228B22')
+  drawRect(6, 14, 2, 2, '#32CD32')
+  
+  // 猫
+  drawRect(26, 19, 3, 2, '#FFA500')
+  drawRect(26, 18, 2, 1, '#FF8800')
+  
+  // 时钟
+  drawRect(35, 3, 3, 3, '#FFFFFF')
+  drawRect(36, 4, 1, 1, '#000000')
+  
+  // 招牌
+  drawRect(15, 1, 10, 2, '#FFA500')
 }
 
-function animate() {
-  animationId = requestAnimationFrame(animate)
-  updateCharacters()
-  renderer.render(scene, camera)
-}
-
-function onWindowResize() {
-  const container = canvasContainer.value
-  if (!container) return
-  const width = container.clientWidth - 220
-  const height = container.clientHeight - 110
-  camera.aspect = width / height
-  camera.updateProjectionMatrix()
-  renderer.setSize(width, height)
+function render(timestamp) {
+  if (!lastTime) lastTime = timestamp
+  const elapsed = timestamp - lastTime
+  
+  if (elapsed > frameTime) {
+    frame++
+    lastTime = timestamp
+    
+    // 清空
+    ctx.fillStyle = '#1a1a2e'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // 绘制场景
+    drawRoom()
+    drawFurniture()
+    
+    // 动画相位
+    const animPhase = (frame % 12) / 3
+    
+    // 绘制5个角色
+    const positions = [[4, 5], [10, 5], [16, 5], [22, 5], [28, 5]]
+    positions.forEach((pos, i) => {
+      drawCharacter(rpgStyles[i], pos[0], pos[1], animPhase + i * 0.5)
+    })
+  }
+  
+  animationId = requestAnimationFrame(render)
 }
 
 function removeVisitor(id) {
@@ -329,13 +384,22 @@ function removeVisitor(id) {
 }
 
 onMounted(() => {
-  setTimeout(init, 100)
-  window.addEventListener('resize', onWindowResize)
+  canvas = canvasRef.value
+  ctx = canvas.getContext('2d')
+  
+  // 设置高清画布
+  canvas.width = 1200
+  canvas.height = 750
+  
+  // 使用平滑缩放
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  
+  render(0)
 })
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
-  window.removeEventListener('resize', onWindowResize)
 })
 </script>
 
@@ -345,8 +409,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; }
 body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
 .container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
-.canvas { flex: 1; overflow: hidden; }
-.canvas canvas { display: block; }
+
+.canvas { 
+  flex: 1; 
+  width: 100%; 
+  height: calc(100% - 110px);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
 
 .side-panel {
   position: absolute; top: 0; right: 0;
