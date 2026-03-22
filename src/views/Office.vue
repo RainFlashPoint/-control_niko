@@ -2,36 +2,46 @@
   <div class="container">
     <div ref="canvasContainer" class="canvas"></div>
     
-    <!-- 信息面板 -->
-    <div class="info-panel">
-      <div class="panel-header">
-        <span class="icon">🏢</span>
-        <span class="title">OpenClaw</span>
+    <!-- 底部UI面板 -->
+    <div class="ui-panel">
+      <div class="ui-section notes">
+        <div class="section-title">昨日小记</div>
+        <div class="notes-content">
+          <p>• 助手A 完成代码审查</p>
+          <p>• 助手B 处理用户请求</p>
+          <p>• 系统运行稳定</p>
+        </div>
       </div>
       
-      <div class="panel-content">
-        <div class="section">
-          <div class="section-title">👥 工作状态</div>
-          <div class="role-cards">
-            <div v-for="role in roles" :key="role.id" class="role-card" :class="role.status">
-              <div class="role-avatar">{{ role.avatar }}</div>
-              <div class="role-info">
-                <div class="role-name">{{ role.name }}</div>
-                <div class="role-status" :class="role.status">
-                  {{ role.status === 'working' ? '工作中' : '空闲' }}
-                </div>
-              </div>
-            </div>
-          </div>
+      <div class="ui-section status">
+        <div class="section-title">Star 状态</div>
+        <div class="status-buttons">
+          <button class="status-btn" :class="{ active: systemStatus === 'idle' }" @click="systemStatus = 'idle'">
+            <span class="btn-icon">💤</span>
+            <span>待命</span>
+          </button>
+          <button class="status-btn" :class="{ active: systemStatus === 'working' }" @click="systemStatus = 'working'">
+            <span class="btn-icon">💻</span>
+            <span>工作</span>
+          </button>
+          <button class="status-btn" :class="{ active: systemStatus === 'sync' }" @click="systemStatus = 'sync'">
+            <span class="btn-icon">🔄</span>
+            <span>同步</span>
+          </button>
+          <button class="status-btn alert" :class="{ active: systemStatus === 'alert' }" @click="systemStatus = 'alert'">
+            <span class="btn-icon">⚠️</span>
+            <span>报警</span>
+          </button>
         </div>
-        
-        <div class="section">
-          <div class="section-title">⏰ 定时任务</div>
-          <div class="task-list">
-            <div v-for="task in cronJobs.slice(0, 3)" :key="task.id" class="task-item">
-              <span class="task-dot" :class="{ active: task.enabled }"></span>
-              <span>{{ task.name }}</span>
-            </div>
+      </div>
+      
+      <div class="ui-section visitors">
+        <div class="section-title">访客列表</div>
+        <div class="visitor-list">
+          <div v-for="v in visitors" :key="v.id" class="visitor-item">
+            <span class="visitor-avatar">{{ v.avatar }}</span>
+            <span class="visitor-name">{{ v.name }}</span>
+            <button class="leave-btn" @click="removeVisitor(v.id)">离开房间</button>
           </div>
         </div>
       </div>
@@ -44,34 +54,38 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 
 const canvasContainer = ref(null)
-const roles = ref([])
-const cronJobs = ref([])
-const activeCount = ref(0)
+const systemStatus = ref('idle')
+const visitors = ref([
+  { id: 1, name: '访客A', avatar: '👤' },
+  { id: 2, name: '访客B', avatar: '👤' }
+])
 
-let scene, camera, renderer, characters = [], backGlows = []
+let scene, camera, renderer, characters = [], serverLights = []
 let animationId = null
 
-// 室内配色
+// 像素风配色
 const C = {
-  wall: '#E8DCC4',
-  wallDark: '#D4C4A8',
-  floor: '#B8A080',
-  floorLight: '#C9B896',
-  desk: '#8B6914',
-  deskTop: '#C4A35A',
-  chair: '#3D5A80',
-  chairSeat: '#4A6FA5',
-  screen: '#1A1A2E',
-  screenOn: '#00D9FF',
-  window: '#87CEEB',
-  curtain: '#E8B4B8',
-  plant: '#4CAF50',
-  plantDark: '#388E3C',
-  pot: '#8D6E63',
-  light: '#FFE082',
-  person: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
-  glow: ['#FF6B6B', '#4ECDC4', '#45B7D1'],
-  decor: '#E74C3C'
+  wall: 0xE8DCC4,
+  floor: 0xC4A35A,
+  floor2: 0xB8956E,
+  desk: 0x8B6914,
+  deskTop: 0xD4B86A,
+  chair: 0x4A6FA5,
+  screen: 0x00D9FF,
+  screenOff: 0x2A2A3A,
+  window: 0x87CEEB,
+  curtain: 0xE8B4B8,
+  sofa: 0xC75D5D,
+  bed: 0x8B9DC4,
+  bookshelf: 0x8B4513,
+  coffee: 0x6F4E37,
+  server: 0x4A4A4A,
+  serverLight: 0xFF0000,
+  plant: 0x4CAF50,
+  cat: 0xFFA500,
+  poster1: 0xE74C3C,
+  poster2: 0x3498DB,
+  person: [0x7CFC00, 0x9932CC, 0x00CED1]
 }
 
 function init() {
@@ -79,44 +93,25 @@ function init() {
   scene.background = new THREE.Color(0x87CEEB)
 
   // 等轴测
-  const aspect = window.innerWidth / window.innerHeight
-  const view = 25
+  const aspect = window.innerWidth / (window.innerHeight - 120)
+  const view = 20
   camera = new THREE.OrthographicCamera(-view * aspect, view * aspect, view, -view, 1, 1000)
-  camera.position.set(30, 30, 30)
+  camera.position.set(25, 25, 25)
   camera.lookAt(0, 0, 0)
 
-  renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setSize(window.innerWidth, window.innerHeight)
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer = new THREE.WebGLRenderer({ antialias: false })
+  renderer.setSize(window.innerWidth, window.innerHeight - 120)
+  renderer.setPixelRatio(1) // 像素风不用高分
   canvasContainer.value.appendChild(renderer.domElement)
 
-  // 灯光
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7))
-  const sun = new THREE.DirectionalLight(0xffffff, 0.5)
-  sun.position.set(20, 40, 20)
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8))
+  const sun = new THREE.DirectionalLight(0xffffff, 0.4)
+  sun.position.set(20, 30, 20)
   scene.add(sun)
 
-  // 地板
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(60, 40),
-    new THREE.MeshLambertMaterial({ color: C.floor })
-  )
-  floor.rotation.x = -Math.PI / 2
-  scene.add(floor)
-
-  // 墙壁
-  createWalls()
-
-  // 窗户
-  createWindows()
-
-  // 工位
-  createDesks()
-
-  // 角色
+  createRoom()
+  createFurniture()
   createCharacters()
-
-  // 室内装饰
   createDecor()
 
   animate()
@@ -126,123 +121,125 @@ function init() {
 function box(w, h, d, color, x, y, z) {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color })
+    new THREE.MeshLambertMaterial({ color, flatShading: true })
   )
   mesh.position.set(x, y, z)
   return mesh
 }
 
-function createWalls() {
-  // 后墙
-  scene.add(box(60, 20, 0.5, C.wall, 0, 10, -15))
-  // 左墙
-  scene.add(box(0.5, 20, 40, C.wall, -30, 10, 5))
-  // 右墙
-  scene.add(box(0.5, 20, 40, C.wall, 30, 10, 5))
-  
-  // 地板边
-  scene.add(box(60, 0.3, 0.5, C.wallDark, 0, 0.15, -14.75))
-}
-
-function createWindows() {
-  // 大窗户
-  for (let i = 0; i < 3; i++) {
-    // 窗框
-    scene.add(box(8, 10, 0.3, C.window, -15 + i * 15, 12, -14.7))
-    // 窗户玻璃
-    scene.add(box(7, 9, 0.1, C.window, -15 + i * 15, 12, -14.5))
-    // 窗帘
-    scene.add(box(0.2, 11, 1, C.curtain, -19 + i * 15, 12, -14))
-    scene.add(box(0.2, 11, 1, C.curtain, -11 + i * 15, 12, -14))
+function createRoom() {
+  // 地板
+  for (let i = -4; i < 4; i++) {
+    for (let j = -3; j < 3; j++) {
+      const color = (i + j) % 2 === 0 ? C.floor : C.floor2
+      scene.add(box(3, 0.2, 3, color, i * 3, 0, j * 3))
+    }
   }
+  
+  // 墙壁
+  scene.add(box(24, 12, 0.3, C.wall, 0, 6, -9))
+  scene.add(box(0.3, 12, 18, C.wall, -12, 6, 0))
 }
 
-function createDesks() {
-  const positions = [[-12, 2], [0, 2], [12, 2]]
-  
-  positions.forEach((pos, i) => {
-    // 桌面
-    scene.add(box(6, 0.3, 3, C.deskTop, pos[0], 4, pos[1]))
-    // 桌腿
-    scene.add(box(0.3, 4, 0.3, C.desk, pos[0] - 2.5, 2, pos[1] - 1))
-    scene.add(box(0.3, 4, 0.3, C.desk, pos[0] + 2.5, 2, pos[1] - 1))
-    scene.add(box(0.3, 4, 0.3, C.desk, pos[0] - 2.5, 2, pos[1] + 1))
-    scene.add(box(0.3, 4, 0.3, C.desk, pos[0] + 2.5, 2, pos[1] + 1))
+function createFurniture() {
+  // 窗户
+  for (let i = 0; i < 3; i++) {
+    scene.add(box(4, 4, 0.2, C.window, -8 + i * 5, 8, -8.8))
+    scene.add(box(0.2, 4.5, 1, C.curtain, -10 + i * 5, 8, -8.5))
+  }
 
-    // 显示器
-    scene.add(box(2.5, 1.8, 0.2, 0x333333, pos[0], 5.5, pos[1] - 1.3))
-    scene.add(box(2, 1.3, 0.1, C.screenOn, pos[0], 5.5, pos[1] - 1.2))
-    // 显示器底座
-    scene.add(box(1, 0.3, 0.8, 0x333333, pos[0], 4.3, pos[1] - 1.2))
-
-    // 键盘
-    scene.add(box(1.5, 0.15, 0.8, 0x555555, pos[0], 4.25, pos[1] + 0.5))
-
+  // 3个工作区
+  const deskPositions = [[-6, 2], [0, 2], [6, 2]]
+  deskPositions.forEach((pos, i) => {
+    // 桌子
+    scene.add(box(4, 0.3, 2.5, C.deskTop, pos[0], 3, pos[1]))
+    scene.add(box(0.3, 3, 0.3, C.desk, pos[0] - 1.7, 1.5, pos[1] - 0.8))
+    scene.add(box(0.3, 3, 0.3, C.desk, pos[0] + 1.7, 1.5, pos[1] - 0.8))
+    
+    // 电脑
+    scene.add(box(1.5, 1.2, 0.2, 0x333333, pos[0], 4.2, pos[1] - 1))
+    scene.add(box(1.2, 0.8, 0.1, i === 1 ? C.screen : C.screenOff, pos[0], 4.2, pos[1] - 0.88))
+    scene.add(box(0.8, 0.2, 0.6, 0x444444, pos[0], 3.3, pos[1] + 0.5))
+    
     // 椅子
-    // 椅子座
-    scene.add(box(1.2, 0.25, 1.2, C.chairSeat, pos[0], 1.8, pos[1] + 1.8))
-    // 椅子背
-    scene.add(box(1.2, 2, 0.2, C.chair, pos[0], 2.8, pos[1] + 2.3))
-    // 椅子腿
-    scene.add(box(0.15, 1.6, 0.15, 0x666666, pos[0] - 0.4, 0.8, pos[1] + 1.8))
-    scene.add(box(0.15, 1.6, 0.15, 0x666666, pos[0] + 0.4, 0.8, pos[1] + 1.8))
+    scene.add(box(1, 0.2, 1, C.chair, pos[0], 1, pos[1] + 1.5))
+    scene.add(box(1, 1.5, 0.2, C.chair, pos[0], 2, pos[1] + 2))
   })
+
+  // 沙发
+  scene.add(box(5, 1, 2, C.sofa, -9, 0.5, -4))
+  scene.add(box(5, 1.5, 0.5, C.sofa, -9, 1.5, -5.5))
+
+  // 床
+  scene.add(box(4, 0.8, 3, C.bed, 8, 0.4, -5))
+  scene.add(box(4, 1.5, 0.5, 0xFFFFFF, 8, 1.2, -6.5))
+  scene.add(box(1.5, 1.5, 0.3, 0xFFFFFF, 6.5, 1.2, -6.8))
+
+  // 书架
+  for (let i = 0; i < 3; i++) {
+    scene.add(box(2, 6, 0.5, C.bookshelf, -11, 3, -4 + i * 4))
+    for (let j = 0; j < 4; j++) {
+      const colors = [0xE74C3C, 0x3498DB, 0x2ECC71, 0xF1C40F]
+      scene.add(box(1.5, 0.3, 0.8, colors[j], -11, 1 + j * 1.3, -4 + i * 4))
+    }
+  }
+
+  // 咖啡机
+  scene.add(box(1, 1.5, 1, C.coffee, 10, 0.75, 4))
+  scene.add(box(0.8, 0.3, 0.8, 0xCCCCCC, 10, 1.65, 4))
+
+  // 服务器机柜
+  scene.add(box(2, 5, 1, C.server, 10, 2.5, -2))
+  for (let i = 0; i < 4; i++) {
+    const light = box(0.3, 0.3, 0.1, C.serverLight, 10.5, 4 - i * 1, -1.45)
+    serverLights.push(light)
+    scene.add(light)
+  }
+
+  // 盆栽
+  scene.add(box(1, 2, 1, 0x8B4513, -9, 1, 5))
+  scene.add(box(1.5, 1.5, 1.5, C.plant, -9, 2.5, 5))
+
+  // 猫
+  scene.add(box(1.5, 0.8, 1, C.cat, 6, 0.4, 5))
+
+  // 装饰画
+  scene.add(box(3, 2, 0.2, C.poster1, 10, 8, -8.8))
+  scene.add(box(3, 2, 0.2, C.poster2, 5, 8, -8.8))
+
+  // Central Perk 招牌
+  scene.add(box(6, 1.5, 0.3, 0xFFA500, 0, 10, -8.8))
 }
 
 function createCharacters() {
-  const positions = [[-12, 5], [0, 5], [12, 5]]
+  const positions = [[-6, 5], [0, 5], [6, 5]]
   
   positions.forEach((pos, i) => {
     const group = new THREE.Group()
     
-    // 背景光晕
-    const glowGeo = new THREE.CircleGeometry(2, 32)
-    const glowMat = new THREE.MeshBasicMaterial({ 
-      color: C.glow[i], 
-      transparent: true, 
-      opacity: 0.25 
-    })
-    const glow = new THREE.Mesh(glowGeo, glowMat)
-    glow.position.set(0, 2.5, -0.6)
-    glow.rotation.x = -Math.PI / 4
-    glow.visible = false
-    group.add(glow)
-    backGlows.push(glow)
-
-    // 身体
-    group.add(box(0.9, 1.4, 0.7, C.person[i], 0, 1.7, 0))
+    // 身体 - 像素小怪物风格
+    group.add(box(1, 1.5, 0.8, C.person[i], 0, 1.75, 0))
     
     // 头
-    group.add(box(0.75, 0.75, 0.75, 0xFFE4C4, 0, 3.15, 0))
+    group.add(box(0.9, 0.9, 0.9, 0x90EE90, 0, 3.2, 0))
     
     // 眼睛
-    group.add(box(0.12, 0.12, 0.1, 0x333333, -0.2, 3.25, 0.38))
-    group.add(box(0.12, 0.12, 0.1, 0x333333, 0.2, 3.25, 0.38))
+    group.add(box(0.15, 0.2, 0.1, 0x000000, -0.25, 3.3, 0.45))
+    group.add(box(0.15, 0.2, 0.1, 0x000000, 0.25, 3.3, 0.45))
     
-    // 腮红
-    group.add(box(0.15, 0.1, 0.1, 0xFFAAAA, -0.35, 3.0, 0.38))
-    group.add(box(0.15, 0.1, 0.1, 0xFFAAAA, 0.35, 3.0, 0.38))
-    
-    // 微笑
-    group.add(box(0.2, 0.08, 0.1, 0xFF6B6B, 0, 2.85, 0.38))
+    // 嘴巴
+    group.add(box(0.2, 0.1, 0.1, 0x000000, 0, 2.9, 0.45))
 
-    // 光环
-    const halo = new THREE.Mesh(
-      new THREE.TorusGeometry(0.7, 0.1, 8, 24),
-      new THREE.MeshBasicMaterial({ color: 0xFFD700 })
-    )
-    halo.position.y = 4
-    halo.rotation.x = Math.PI / 2
-    halo.visible = false
-    group.add(halo)
+    // 耳朵
+    group.add(box(0.3, 0.4, 0.3, C.person[i], -0.5, 3.6, 0))
+    group.add(box(0.3, 0.4, 0.3, C.person[i], 0.5, 3.6, 0))
 
     group.position.set(pos[0], 0, pos[1])
     group.userData = { 
       baseZ: pos[1], 
       walkZ: pos[1] + 3,
       isWorking: false,
-      halo,
-      glow
+      index: i
     }
     
     scene.add(group)
@@ -251,59 +248,31 @@ function createCharacters() {
 }
 
 function createDecor() {
-  // 植物
-  const plants = [[-25, -5], [25, -5], [-25, 15], [25, 15]]
-  plants.forEach(p => {
-    // 花盆
-    scene.add(box(1.5, 1.5, 1.5, C.pot, p[0], 0.75, p[1]))
-    // 叶子
-    scene.add(box(1, 2, 1, C.plant, p[0], 2.5, p[1]))
-    scene.add(box(0.8, 1.5, 0.8, C.plantDark, p[0], 3.5, p[1]))
-  })
-
-  // 打印机
-  scene.add(box(1.5, 1.2, 1.2, 0xCCCCCC, 22, 0.6, 0))
-  scene.add(box(1, 0.3, 0.8, 0x999999, 22, 1.35, 0))
-
-  // 时钟
-  scene.add(box(1.5, 1.5, 0.2, 0xFFFFFF, -22, 15, -14.5))
-  scene.add(box(0.1, 0.8, 0.1, 0x333333, -22, 15, -14.3))
-
-  // 装饰画
-  scene.add(box(4, 3, 0.2, 0xE74C3C, 22, 12, -14.5))
-  scene.add(box(3, 2, 0.1, 0xFFFFFF, 22, 12, -14.35))
-
-  // 空调/暖气
-  scene.add(box(3, 1, 1, 0xDDDDDD, 10, 18, -14.7))
-  scene.add(box(3, 1, 1, 0xDDDDDD, -10, 18, -14.7))
-
-  // 门
-  scene.add(box(3, 8, 0.3, 0x8B4513, -28, 4, 0))
-  scene.add(box(0.1, 6, 0.1, 0xFFD700, -26.5, 4, 0.2))
+  // 地板装饰
+  scene.add(box(1, 0.1, 8, 0x8B4513, 5, 0.05, 0))
 }
 
 function updateCharacters() {
   const time = Date.now() * 0.001
+  const isWorking = systemStatus.value === 'working'
   
   characters.forEach((char, i) => {
-    const role = roles.value[i]
-    const isWorking = role?.status === 'working'
     char.userData.isWorking = isWorking
-    char.userData.halo.visible = isWorking
-    char.userData.glow.visible = isWorking
     
     if (isWorking) {
-      char.position.y = Math.sin(time * 5 + i) * 0.12
-      char.position.z = char.userData.walkZ + Math.sin(time * 0.8) * 1.2
+      char.position.y = Math.sin(time * 5 + i) * 0.08
+      char.position.z = char.userData.walkZ + Math.sin(time) * 1
     } else {
-      char.scale.setScalar(1 + Math.sin(time * 1.5 + i) * 0.025)
+      char.scale.setScalar(1)
       char.position.z = char.userData.baseZ
       char.position.y = 0
     }
-    
-    if (char.userData.halo.visible) {
-      char.userData.halo.rotation.z += 0.04
-    }
+  })
+
+  // 服务器闪烁
+  const blink = Math.sin(time * 3) > 0
+  serverLights.forEach(light => {
+    light.material.color.setHex(blink ? 0xFF0000 : 0x440000)
   })
 }
 
@@ -314,107 +283,140 @@ function animate() {
 }
 
 function onWindowResize() {
-  const aspect = window.innerWidth / window.innerHeight
-  const view = 25
+  const aspect = window.innerWidth / (window.innerHeight - 120)
+  const view = 20
   camera.left = -view * aspect
   camera.right = view * aspect
-  camera.top = view
-  camera.bottom = -view
   camera.updateProjectionMatrix()
-  renderer.setSize(window.innerWidth, window.innerHeight)
+  renderer.setSize(window.innerWidth, window.innerHeight - 120)
 }
 
-async function fetchData() {
-  try {
-    const [rolesRes, statusRes] = await Promise.all([
-      fetch('http://localhost:3001/api/roles').then(r => r.json()).catch(() => ({ code: 0, data: [] })),
-      fetch('http://localhost:3001/api/status').then(r => r.json()).catch(() => ({ code: 0, data: {} }))
-    ])
-    
-    if (rolesRes.code === 0) roles.value = rolesRes.data
-    if (statusRes.code === 0) {
-      cronJobs.value = statusRes.data.cronJobs || []
-      activeCount.value = roles.value.filter(r => r.status === 'working').length
-    }
-  } catch (e) {
-    console.error('获取数据失败:', e)
-  }
+function removeVisitor(id) {
+  visitors.value = visitors.value.filter(v => v.id !== id)
 }
-
-let dataTimer = null
 
 onMounted(() => {
   init()
-  dataTimer = setInterval(fetchData, 3000)
-  fetchData()
 })
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
-  if (dataTimer) clearInterval(dataTimer)
   window.removeEventListener('resize', onWindowResize)
 })
 </script>
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-
-.container { width: 100vw; height: 100vh; position: relative; }
-.canvas { width: 100%; height: 100%; }
-
-.info-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 170px;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  z-index: 100;
-  overflow: hidden;
+body { 
+  overflow: hidden; 
+  font-family: 'Courier New', monospace;
+  background: #1a1a2e;
 }
 
-.panel-header {
+.container { width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+.canvas { flex: 1; }
+
+/* 像素风UI面板 */
+.ui-panel {
+  height: 120px;
+  background: linear-gradient(180deg, #2C2C3E 0%, #1A1A2E 100%);
+  display: flex;
+  border-top: 4px solid #E74C3C;
+  padding: 10px;
+  gap: 10px;
+}
+
+.ui-section {
+  background: #3A3A4A;
+  border: 3px solid #000;
+  border-radius: 0;
+  padding: 8px;
+  image-rendering: pixelated;
+}
+
+.ui-section.notes { flex: 1; }
+.ui-section.status { width: 280px; }
+.ui-section.visitors { flex: 1; }
+
+.section-title {
+  font-size: 11px;
+  color: #F1C40F;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.notes-content p {
+  font-size: 9px;
+  color: #AAA;
+  margin: 2px 0;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.status-btn {
+  flex: 1;
+  background: #2A2A3A;
+  border: 2px solid #000;
+  color: #FFF;
+  padding: 6px 4px;
+  font-size: 9px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.status-btn:hover { background: #4A4A5A; }
+.status-btn.active { 
+  background: #E74C3C; 
+  border-color: #FFF;
+}
+
+.status-btn.alert.active { 
+  background: #FF0000;
+  animation: blink 0.5s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.btn-icon { font-size: 14px; }
+
+.visitor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 70px;
+  overflow-y: auto;
+}
+
+.visitor-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-weight: 600;
-  font-size: 13px;
+  gap: 6px;
+  background: #2A2A3A;
+  padding: 4px 6px;
+  font-size: 9px;
 }
 
-.panel-content { padding: 12px; }
-.section { margin-bottom: 12px; }
-.section:last-child { margin-bottom: 0; }
-.section-title { font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.visitor-avatar { font-size: 12px; }
+.visitor-name { flex: 1; color: #CCC; }
 
-.role-cards { display: flex; flex-direction: column; gap: 6px; }
-
-.role-card { 
-  display: flex; align-items: center; gap: 10px; 
-  padding: 8px 10px; background: #FAFBFC; border-radius: 12px;
+.leave-btn {
+  background: #E74C3C;
+  border: 1px solid #000;
+  color: #FFF;
+  font-size: 8px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-family: inherit;
 }
-
-.role-card.working { background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%); }
-
-.role-avatar {
-  width: 32px; height: 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px;
-}
-
-.role-info { flex: 1; }
-.role-name { font-size: 12px; font-weight: 600; color: #333; }
-.role-status { font-size: 10px; color: #999; }
-.role-status.working { color: #4CAF50; font-weight: 500; }
-
-.task-list { display: flex; flex-direction: column; gap: 5px; }
-.task-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; padding: 4px 0; }
-.task-dot { width: 6px; height: 6px; border-radius: 50%; background: #CCC; }
-.task-dot.active { background: #4CAF50; }
 </style>
