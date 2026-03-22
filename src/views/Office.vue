@@ -1,6 +1,8 @@
 <template>
   <div class="container">
-    <canvas ref="canvasRef" class="canvas"></canvas>
+    <div class="canvas-container">
+      <canvas ref="canvasRef" class="canvas"></canvas>
+    </div>
     
     <div class="side-panel">
       <div class="panel-title">🐉 龙虾状态</div>
@@ -384,22 +386,38 @@ function removeVisitor(id) {
 }
 
 onMounted(() => {
+  const container = canvasRef.value?.parentElement
+  if (!container) return
+  
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
-  // 设置高清画布
-  canvas.width = 1200
-  canvas.height = 750
+  // 根据容器大小设置画布
+  const rect = container.getBoundingClientRect()
+  canvas.width = rect.width
+  canvas.height = rect.height
   
   // 使用平滑缩放
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   
   render(0)
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', handleResize)
 })
+
+function handleResize() {
+  const container = canvasRef.value?.parentElement
+  if (!container || !canvas) return
+  const rect = container.getBoundingClientRect()
+  canvas.width = rect.width
+  canvas.height = rect.height
+}
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -408,14 +426,28 @@ onUnmounted(() => {
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
-.container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
+.container { 
+  width: 100vw; 
+  height: 100vh; 
+  display: flex; 
+  flex-direction: column; 
+  position: relative;
+  background: #1a1a2e;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  background: #1a1a2e;
+  overflow: hidden;
+}
 
 .canvas { 
-  flex: 1; 
-  width: 100%; 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   height: 100%;
-  min-height: 400px;
-  background: #1a1a2e;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
