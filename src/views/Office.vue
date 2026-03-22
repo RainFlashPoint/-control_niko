@@ -106,13 +106,13 @@ const frameTime = 1000 / FPS
 
 let frame = 0
 
-// 角色精灵图
+// 角色精灵图 - 根据背景图调整位置
 const characters = [
-  { name: '蓝发', src: '/character-blue.png', x: 150, y: 280 },
-  { name: '紫发', src: '/character-purple.png', x: 350, y: 280 },
-  { name: '橙发', src: '/character-orange.png', x: 550, y: 280 },
-  { name: '绿发', src: '/character-green.png', x: 750, y: 280 },
-  { name: '粉发', src: '/character-pink.png', x: 950, y: 280 },
+  { name: '蓝发', src: '/character-blue.png', x: 80, y: 180 },
+  { name: '紫发', src: '/character-purple.png', x: 220, y: 180 },
+  { name: '橙发', src: '/character-orange.png', x: 360, y: 180 },
+  { name: '绿发', src: '/character-green.png', x: 500, y: 180 },
+  { name: '粉发', src: '/character-pink.png', x: 640, y: 180 },
 ]
 
 const charImages = []
@@ -149,8 +149,8 @@ function drawCharacters() {
     
     const destX = char.x
     const destY = char.y
-    const destW = 120
-    const destH = 180
+    const destW = 100
+    const destH = 150
     
     ctx.drawImage(
       img,
@@ -182,14 +182,22 @@ onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
-  // 设置画布大小
-  canvas.width = canvasRef.value.parentElement.clientWidth
-  canvas.height = canvasRef.value.parentElement.clientHeight
+  // 根据背景图设置画布大小（保持16:9比例）
+  const container = canvasRef.value.parentElement
+  const containerRatio = container.clientWidth / container.clientHeight
+  
+  // 背景图比例大约是16:9
+  if (containerRatio > 16/9) {
+    canvas.height = container.clientHeight
+    canvas.width = container.clientHeight * (16/9)
+  } else {
+    canvas.width = container.clientWidth
+    canvas.height = container.clientWidth * (9/16)
+  }
   
   // 加载角色图片
   loadCharacterImages()
   
-  // 等待背景加载
   render()
 })
 
@@ -221,11 +229,12 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
 .bg-scene {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   z-index: 1;
 }
 
