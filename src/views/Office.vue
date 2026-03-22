@@ -386,19 +386,14 @@ function removeVisitor(id) {
 }
 
 onMounted(() => {
-  const container = canvasRef.value?.parentElement
-  if (!container) return
-  
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
-  // 根据容器大小设置画布
-  const rect = container.getBoundingClientRect()
-  canvas.width = rect.width
-  canvas.height = rect.height
+  // 使用固定尺寸确保能显示
+  canvas.width = 400
+  canvas.height = 250
   
   console.log('Canvas size:', canvas.width, canvas.height)
-  console.log('Container size:', rect.width, rect.height)
   
   // 使用平滑缩放
   ctx.imageSmoothingEnabled = true
@@ -443,6 +438,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   position: relative;
   background: #1a1a2e;
   overflow: hidden;
+  min-height: 400px;
 }
 
 .canvas { 
@@ -451,8 +447,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   left: 0;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  image-rendering: auto;
 }
 
 .side-panel {
