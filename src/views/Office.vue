@@ -108,13 +108,22 @@ let frame = 0
 
 // 角色精灵图 - 根据画布百分比定位
 function getCharacterPositions(canvasWidth, canvasHeight) {
-  const scale = canvasWidth / 1280 // 基于1280宽度的比例
+  // 每帧宽度是图片总宽的1/4
+  const frameWidth = 292 / 4 // 73px
+  const frameHeight = 664
+  
+  // 目标显示宽度是屏幕的8%
+  const targetWidth = canvasWidth * 0.08
+  const scale = targetWidth / frameWidth
+  
+  const baseY = canvasHeight * 0.5
+  
   return [
-    { name: '蓝发', src: '/character-blue.png', x: 100 * scale, y: canvasHeight * 0.45 },
-    { name: '紫发', src: '/character-purple.png', x: 280 * scale, y: canvasHeight * 0.45 },
-    { name: '橙发', src: '/character-orange.png', x: 460 * scale, y: canvasHeight * 0.45 },
-    { name: '绿发', src: '/character-green.png', x: 640 * scale, y: canvasHeight * 0.45 },
-    { name: '粉发', src: '/character-pink.png', x: 820 * scale, y: canvasHeight * 0.45 },
+    { name: '蓝发', src: '/character-blue.png', x: canvasWidth * 0.08, y: baseY },
+    { name: '紫发', src: '/character-purple.png', x: canvasWidth * 0.24, y: baseY },
+    { name: '橙发', src: '/character-orange.png', x: canvasWidth * 0.40, y: baseY },
+    { name: '绿发', src: '/character-green.png', x: canvasWidth * 0.56, y: baseY },
+    { name: '粉发', src: '/character-pink.png', x: canvasWidth * 0.72, y: baseY },
   ]
 }
 
@@ -145,20 +154,17 @@ function drawCharacters() {
     const img = charImages[index]
     if (!img) return
     
-    // 每个角色在4帧中显示不同的姿态
-    const srcX = frameCol * (img.width / 4)
-    const srcY = 0
+    // 原始帧大小
     const srcW = img.width / 4
     const srcH = img.height
     
-    // 角色大小根据画布调整
-    const scale = canvas.width / 1280
-    const destW = 100 * scale
-    const destH = destW * (img.height / img.width)
+    // 目标显示大小 - 屏幕宽度的8%
+    const destW = canvas.width * 0.08
+    const destH = destW * (srcH / srcW)
     
     ctx.drawImage(
       img,
-      srcX, srcY, srcW, srcH,
+      frameCol * srcW, 0, srcW, srcH,
       char.x, char.y, destW, destH
     )
   })
