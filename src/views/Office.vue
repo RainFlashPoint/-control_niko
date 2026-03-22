@@ -209,35 +209,74 @@ function createFurniture() {
 function createCharacters() {
   const positions = [[-16, 8], [-8, 8], [0, 8], [8, 8], [16, 8]]
   
-  const styles = [
-    { body: 0x5D8A5D, eyes: 0xFFFFFF, accent: 0x3D6B3D },
-    { body: 0x8B6B8B, eyes: 0xFF6B6B, accent: 0x5D5D5D },
-    { body: 0x6B8B9B, eyes: 0x4ECDC4, accent: 0x3D5D5D },
-    { body: 0x9B6B5B, eyes: 0xFFD93D, accent: 0x6D5D4D },
-    { body: 0x8B7B6B, eyes: 0xFF6B6B, accent: 0x5D4D4D },
+  // RPG角色风格：剑士、法师、刺客、骑士、弓箭手
+  const rpgStyles = [
+    { name: '剑士', armor: 0x708090, skin: 0xFFDBAC, hair: 0x8B4513, weapon: 0xC0C0C0, cape: 0xDC143C },
+    { name: '法师', armor: 0x4B0082, skin: 0xFFDBAC, hair: 0xFFD700, weapon: 0x9400D3, cape: 0x4B0082 },
+    { name: '刺客', armor: 0x1C1C1C, skin: 0xFFDBAC, hair: 0x000000, weapon: 0xC0C0C0, cape: 0x2F4F4F },
+    { name: '骑士', armor: 0xD4AF37, skin: 0xFFDBAC, hair: 0xD2691E, weapon: 0xC0C0C0, cape: 0x4169E1 },
+    { name: '弓箭手', armor: 0x228B22, skin: 0xFFDBAC, hair: 0x8B4513, weapon: 0x8B4513, cape: 0x228B22 },
   ]
   
   positions.forEach((pos, i) => {
-    const s = styles[i]
+    const s = rpgStyles[i]
     const g = new THREE.Group()
     
-    g.add(box(2, 2.5, 1.5, s.body, 0, 2.25, 0))
-    g.add(box(2.1, 2, 0.3, s.accent, 0, 2, 0.7))
-    g.add(box(1.8, 1.8, 1.8, s.body, 0, 4.4, 0))
-    g.add(box(1.4, 0.8, 0.3, 0xFFFFFF, 0, 4.5, 0.9))
-    g.add(box(0.4, 0.4, 0.2, s.eyes, -0.35, 4.5, 1.0))
-    g.add(box(0.4, 0.4, 0.2, s.eyes, 0.35, 4.5, 1.0))
-    g.add(box(0.15, 0.15, 0.1, 0xFFFFFF, -0.25, 4.55, 1.1))
-    g.add(box(0.15, 0.15, 0.1, 0xFFFFFF, 0.45, 4.55, 1.1))
-    g.add(box(0.5, 0.2, 0.15, 0x333333, 0, 3.9, 1.0))
-    g.add(box(0.3, 0.6, 0.3, s.body, -0.9, 5.3, 0))
-    g.add(box(0.3, 0.6, 0.3, s.body, 0.9, 5.3, 0))
-    g.add(box(0.15, 0.4, 0.15, s.eyes, -0.9, 5.7, 0))
-    g.add(box(0.15, 0.4, 0.15, s.eyes, 0.9, 5.7, 0))
-    g.add(box(0.5, 0.8, 0.5, s.body, -0.5, 0.4, 0))
-    g.add(box(0.5, 0.8, 0.5, s.body, 0.5, 0.4, 0))
-    g.add(box(0.7, 0.3, 0.8, s.accent, -0.5, 0.15, 0.1))
-    g.add(box(0.7, 0.3, 0.8, s.accent, 0.5, 0.15, 0.1))
+    // 腿部盔甲
+    g.add(box(0.7, 1.2, 0.6, s.armor, -0.35, 0.6, 0))
+    g.add(box(0.7, 1.2, 0.6, s.armor, 0.35, 0.6, 0))
+    // 靴子
+    g.add(box(0.8, 0.4, 0.9, 0x3D3D3D, -0.35, 0.2, 0.05))
+    g.add(box(0.8, 0.4, 0.9, 0x3D3D3D, 0.35, 0.2, 0.05))
+    
+    // 身体盔甲
+    g.add(box(1.8, 2, 1, s.armor, 0, 2.4, 0))
+    // 盔甲细节
+    g.add(box(1.6, 0.3, 1.1, 0xFFFFFF, 0, 3.2, 0))
+    g.add(box(0.8, 0.8, 0.2, 0xFFD700, 0, 2.4, 0.55))
+    
+    // 披风
+    g.add(box(0.2, 2.5, 1.2, s.cape, -1.05, 2.5, 0))
+    g.add(box(0.2, 2.5, 1.2, s.cape, 1.05, 2.5, 0))
+    
+    // 手臂
+    g.add(box(0.5, 1.5, 0.5, s.armor, -1.15, 2.5, 0))
+    g.add(box(0.5, 1.5, 0.5, s.armor, 1.15, 2.5, 0))
+    // 手
+    g.add(box(0.4, 0.4, 0.4, s.skin, -1.15, 1.5, 0))
+    g.add(box(0.4, 0.4, 0.4, s.skin, 1.15, 1.5, 0))
+    
+    // 武器 - 剑
+    if (i === 0 || i === 2 || i === 3) {
+      g.add(box(0.15, 2.5, 0.15, s.weapon, 1.4, 2.8, 0))
+      g.add(box(0.4, 0.4, 0.15, 0x8B4513, 1.4, 1.2, 0))
+      g.add(box(0.5, 0.1, 0.2, 0xFFD700, 1.4, 1.0, 0))
+    }
+    // 法杖
+    if (i === 1) {
+      g.add(box(0.2, 3, 0.2, 0x8B4513, 1.4, 3, 0))
+      g.add(box(0.4, 0.4, 0.4, s.weapon, 1.4, 4.8, 0))
+    }
+    // 弓
+    if (i === 4) {
+      g.add(box(0.15, 2.2, 0.15, s.weapon, 1.4, 3, 0))
+      g.add(box(0.6, 0.15, 0.1, 0x8B4513, 1.4, 3.5, 0.3))
+      g.add(box(0.6, 0.15, 0.1, 0x8B4513, 1.4, 2.5, 0.3))
+    }
+    
+    // 头部
+    g.add(box(1, 1, 0.9, s.skin, 0, 4.5, 0))
+    // 头盔
+    g.add(box(1.1, 0.8, 1, s.armor, 0, 5.0, 0))
+    g.add(box(0.3, 0.5, 0.3, s.armor, 0, 5.5, 0.5))
+    g.add(box(0.25, 0.8, 0.1, 0xFFFFFF, 0, 5.2, 0.55))
+    
+    // 头发
+    g.add(box(1, 0.4, 0.9, s.hair, 0, 5.3, -0.1))
+    
+    // 眼睛
+    g.add(box(0.25, 0.15, 0.1, 0x000000, -0.25, 4.55, 0.45))
+    g.add(box(0.25, 0.15, 0.1, 0x000000, 0.25, 4.55, 0.45))
 
     g.position.set(pos[0], 0, pos[1])
     g.userData = { baseZ: pos[1], walkZ: pos[1] + 4, isWorking: false, index: i }
