@@ -106,14 +106,17 @@ const frameTime = 1000 / FPS
 
 let frame = 0
 
-// 角色精灵图 - 根据背景图调整位置
-const characters = [
-  { name: '蓝发', src: '/character-blue.png', x: 80, y: 180 },
-  { name: '紫发', src: '/character-purple.png', x: 220, y: 180 },
-  { name: '橙发', src: '/character-orange.png', x: 360, y: 180 },
-  { name: '绿发', src: '/character-green.png', x: 500, y: 180 },
-  { name: '粉发', src: '/character-pink.png', x: 640, y: 180 },
-]
+// 角色精灵图 - 根据画布百分比定位
+function getCharacterPositions(canvasWidth, canvasHeight) {
+  const scale = canvasWidth / 1280 // 基于1280宽度的比例
+  return [
+    { name: '蓝发', src: '/character-blue.png', x: 100 * scale, y: canvasHeight * 0.45 },
+    { name: '紫发', src: '/character-purple.png', x: 280 * scale, y: canvasHeight * 0.45 },
+    { name: '橙发', src: '/character-orange.png', x: 460 * scale, y: canvasHeight * 0.45 },
+    { name: '绿发', src: '/character-green.png', x: 640 * scale, y: canvasHeight * 0.45 },
+    { name: '粉发', src: '/character-pink.png', x: 820 * scale, y: canvasHeight * 0.45 },
+  ]
+}
 
 const charImages = []
 let charImagesLoaded = 0
@@ -136,6 +139,7 @@ function onBgLoad() {
 
 function drawCharacters() {
   const frameCol = frame % 4 // 4帧动画
+  const characters = getCharacterPositions(canvas.width, canvas.height)
   
   characters.forEach((char, index) => {
     const img = charImages[index]
@@ -147,15 +151,15 @@ function drawCharacters() {
     const srcW = img.width / 4
     const srcH = img.height
     
-    const destX = char.x
-    const destY = char.y
-    const destW = 100
-    const destH = 150
+    // 角色大小根据画布调整
+    const scale = canvas.width / 1280
+    const destW = 100 * scale
+    const destH = destW * (img.height / img.width)
     
     ctx.drawImage(
       img,
       srcX, srcY, srcW, srcH,
-      destX, destY, destW, destH
+      char.x, char.y, destW, destH
     )
   })
 }
@@ -182,27 +186,30 @@ onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
-  // 根据背景图设置画布大小（保持16:9比例）
+  // 画布铺满容器
   const container = canvasRef.value.parentElement
-  const containerRatio = container.clientWidth / container.clientHeight
-  
-  // 背景图比例大约是16:9
-  if (containerRatio > 16/9) {
-    canvas.height = container.clientHeight
-    canvas.width = container.clientHeight * (16/9)
-  } else {
-    canvas.width = container.clientWidth
-    canvas.height = container.clientWidth * (9/16)
-  }
+  canvas.width = container.clientWidth
+  canvas.height = container.clientHeight
   
   // 加载角色图片
   loadCharacterImages()
   
   render()
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', handleResize)
 })
+
+function handleResize() {
+  const container = canvasRef.value?.parentElement
+  if (!container) return
+  canvas.width = container.clientWidth
+  canvas.height = container.clientHeight
+}
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -229,12 +236,11 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
 .bg-scene {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   z-index: 1;
 }
 
