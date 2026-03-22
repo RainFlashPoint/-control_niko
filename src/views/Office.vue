@@ -97,16 +97,13 @@ const visitors = ref([
   { id: 2, name: '访客B', avatar: '👨‍🔬' }
 ])
 
-let ctx, canvas
+let ctx, canvas, scale = 1
 let animationId = null
 let lastTime = 0
 const FPS = 15
 const frameTime = 1000 / FPS
 
-// 像素比例 - 高清
-const PIXEL_SIZE = 3
-
-// RPG角色配色方案 - 高清细腻
+// RPG角色配色方案
 const rpgStyles = [
   { 
     name: '剑士',
@@ -145,46 +142,40 @@ const rpgStyles = [
   }
 ]
 
-// 动画帧
 let frame = 0
 
-function drawPixel(x, y, color, size = PIXEL_SIZE) {
-  ctx.fillStyle = color
-  ctx.fillRect(x * size, y * size, size, size)
-}
-
+// 绘制矩形（使用缩放）
 function drawRect(x, y, w, h, color) {
   ctx.fillStyle = color
-  ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, w * PIXEL_SIZE, h * PIXEL_SIZE)
+  ctx.fillRect(x * scale, y * scale, w * scale, h * scale)
 }
 
-// 绘制高清RPG角色
+// 绘制高清RPG角色（优化版）
 function drawCharacter(style, x, y, animPhase) {
   const s = style
   const bounce = Math.floor(animPhase) % 2 === 0 ? 0 : -1
   const legPhase = Math.floor(animPhase) % 4
   
-  // === 腿部 ===
+  // 腿部动画偏移
   const legOffset1 = legPhase === 1 ? -1 : legPhase === 3 ? 1 : 0
   const legOffset2 = legPhase === 3 ? -1 : legPhase === 1 ? 1 : 0
   
-  // 左腿
+  // === 腿部 ===
   drawRect(x + 8, y + 28 + bounce, 5, 8, s.armorDark)
   drawRect(x + 8, y + 36 + bounce, 5, 3, s.handle)
-  drawRect(x + 7, y + 38 + bounce, 7, 2, s.armorMain) // 靴子
+  drawRect(x + 7, y + 38 + bounce, 7, 2, s.armorMain)
   
-  // 右腿
   drawRect(x + 15, y + 28 + bounce + legOffset2, 5, 8, s.armorDark)
   drawRect(x + 15, y + 36 + bounce + legOffset2, 5, 3, s.handle)
   drawRect(x + 14, y + 38 + bounce + legOffset2, 7, 2, s.armorMain)
   
-  // === 身体/盔甲 ===
-  drawRect(x + 6, y + 16 + bounce, 16, 13, s.armorMain) // 主体
-  drawRect(x + 5, y + 18 + bounce, 2, 10, s.armorDark) // 左边暗
-  drawRect(x + 21, y + 18 + bounce, 2, 10, s.armorDark) // 右边暗
-  drawRect(x + 6, y + 14 + bounce, 16, 3, s.armorLight) // 腰部亮
-  drawRect(x + 12, y + 18 + bounce, 4, 6, s.armorLight) // 胸甲中心
-  drawRect(x + 10, y + 17 + bounce, 8, 2, s.weaponDetail) // 护心镜
+  // === 身体盔甲 ===
+  drawRect(x + 6, y + 16 + bounce, 16, 13, s.armorMain)
+  drawRect(x + 5, y + 18 + bounce, 2, 10, s.armorDark)
+  drawRect(x + 21, y + 18 + bounce, 2, 10, s.armorDark)
+  drawRect(x + 6, y + 14 + bounce, 16, 3, s.armorLight)
+  drawRect(x + 12, y + 18 + bounce, 4, 6, s.armorLight)
+  drawRect(x + 10, y + 17 + bounce, 8, 2, s.weaponDetail)
   
   // === 披风 ===
   drawRect(x + 4, y + 14 + bounce, 3, 18, s.cape)
@@ -193,164 +184,161 @@ function drawCharacter(style, x, y, animPhase) {
   drawRect(x + 21, y + 16 + bounce, 2, 14, s.capeInside)
   
   // === 手臂 ===
-  // 左臂
   drawRect(x + 2, y + 17 + bounce, 4, 10, s.armorMain)
-  drawRect(x + 1, y + 26 + bounce, 3, 4, s.skin) // 手
-  
-  // 右臂
+  drawRect(x + 1, y + 26 + bounce, 3, 4, s.skin)
   drawRect(x + 22, y + 17 + bounce, 4, 10, s.armorMain)
   drawRect(x + 24, y + 26 + bounce, 3, 4, s.skin)
   
   // === 武器 ===
   if (s.name === '剑士' || s.name === '刺客' || s.name === '骑士') {
-    // 剑
-    drawRect(x + 26, y + 10 + bounce, 2, 14, s.weapon) // 剑刃
-    drawRect(x + 26, y + 8 + bounce, 2, 3, s.weaponDetail) // 剑尖
-    drawRect(x + 26, y + 24 + bounce, 2, 3, s.handle) // 剑柄
-    drawRect(x + 24, y + 26 + bounce, 6, 2, s.weaponDetail) // 护手
+    drawRect(x + 26, y + 10 + bounce, 2, 14, s.weapon)
+    drawRect(x + 26, y + 8 + bounce, 2, 3, s.weaponDetail)
+    drawRect(x + 26, y + 24 + bounce, 2, 3, s.handle)
+    drawRect(x + 24, y + 26 + bounce, 6, 2, s.weaponDetail)
   } else if (s.name === '法师') {
-    // 法杖
     drawRect(x + 26, y + 6 + bounce, 2, 22, s.handle)
-    drawRect(x + 24, y + 4 + bounce, 6, 6, s.weapon) // 顶部宝石
+    drawRect(x + 24, y + 4 + bounce, 6, 6, s.weapon)
     drawRect(x + 25, y + 5 + bounce, 4, 4, s.weaponDetail)
-    drawRect(x + 26, y + 3 + bounce, 2, 2, '#FFFFFF') // 宝石高光
+    drawRect(x + 26, y + 3 + bounce, 2, 2, '#FFFFFF')
   } else if (s.name === '弓箭手') {
-    // 弓
-    drawRect(x + 26, y + 8 + bounce, 2, 16, s.weapon) // 弓柄
-    drawRect(x + 23, y + 7 + bounce, 2, 2, s.weapon) // 弓上端
-    drawRect(x + 23, y + 23 + bounce, 2, 2, s.weapon) // 弓下端
-    // 弓弦
+    drawRect(x + 26, y + 8 + bounce, 2, 16, s.weapon)
+    drawRect(x + 23, y + 7 + bounce, 2, 2, s.weapon)
+    drawRect(x + 23, y + 23 + bounce, 2, 2, s.weapon)
     drawRect(x + 24, y + 8 + bounce, 1, 16, '#CCCCCC')
   }
   
   // === 头部 ===
-  drawRect(x + 9, y + 2 + bounce, 10, 10, s.skin) // 脸
-  
-  // 头发
+  drawRect(x + 9, y + 2 + bounce, 10, 10, s.skin)
   drawRect(x + 8, y + bounce, 12, 4, s.hair)
   drawRect(x + 7, y + 1 + bounce, 2, 5, s.hair)
   drawRect(x + 19, y + 1 + bounce, 2, 5, s.hair)
   drawRect(x + 9, y - 1 + bounce, 10, 2, s.hair)
-  drawRect(x + 11, y - 2 + bounce, 6, 2, s.hairLight) // 头发高光
+  drawRect(x + 11, y - 2 + bounce, 6, 2, s.hairLight)
   
   // 头盔
   drawRect(x + 8, y - 1 + bounce, 12, 4, s.armorMain)
   drawRect(x + 10, y - 3 + bounce, 8, 3, s.armorMain)
-  drawRect(x + 13, y - 4 + bounce, 2, 2, s.armorLight) // 头盔羽毛/装饰
-  drawRect(x + 12, y + 1 + bounce, 4, 3, s.armorDark) // 头盔阴影
+  drawRect(x + 13, y - 4 + bounce, 2, 2, s.armorLight)
+  drawRect(x + 12, y + 1 + bounce, 4, 3, s.armorDark)
   
   // 眼睛
   drawRect(x + 11, y + 5 + bounce, 2, 2, '#1A1A1A')
   drawRect(x + 15, y + 5 + bounce, 2, 2, '#1A1A1A')
-  drawRect(x + 11, y + 5 + bounce, 1, 1, '#FFFFFF') // 眼神高光
+  drawRect(x + 11, y + 5 + bounce, 1, 1, '#FFFFFF')
   drawRect(x + 15, y + 5 + bounce, 1, 1, '#FFFFFF')
   
   // 嘴巴
   drawRect(x + 13, y + 9 + bounce, 2, 1, '#CC8888')
 }
 
-// 绘制房间背景
+// 绘制房间（优化版）
 function drawRoom() {
-  // 地板 - 细腻木纹
-  for (let i = 0; i < 40; i++) {
-    for (let j = 0; j < 25; j++) {
-      const color = (i + j) % 2 === 0 ? '#C9A86C' : '#B8956A'
-      drawRect(i, j, 1, 1, color)
+  const w = canvas.width
+  const h = canvas.height
+  
+  // 地板 - 简约木纹
+  for (let i = 0; i < w; i += 6) {
+    for (let j = h * 0.3; j < h; j += 6) {
+      const color = ((i + j) / 6) % 2 === 0 ? '#C9A86C' : '#B8956A'
+      drawRect(i / scale, j / scale, 1, 1, color)
     }
   }
   
-  // 墙壁
-  drawRect(0, 0, 40, 3, '#D4C4A8') // 上墙
-  drawRect(0, 0, 2, 25, '#C4B498') // 左墙
-  drawRect(38, 0, 2, 25, '#C4B498') // 右墙
-  
-  // 墙纸纹理
-  for (let i = 2; i < 38; i++) {
-    for (let j = 3; j < 20; j++) {
-      if (j % 4 === 0) {
-        drawRect(i, j, 1, 1, '#E8DCC4')
-      }
+  // 墙壁 - 上方
+  for (let i = 0; i < w; i += 4) {
+    for (let j = 0; j < h * 0.3; j += 4) {
+      drawRect(i / scale, j / scale, 1, 1, '#D4C4A8')
     }
   }
+  
+  // 墙壁纹理
+  for (let i = 0; i < w; i += 20) {
+    for (let j = 0; j < h * 0.3; j += 20) {
+      drawRect(i / scale, j / scale, 1, 1, '#E8DCC4')
+    }
+  }
+  
+  // 墙裙
+  drawRect(0, h * 0.28 / scale, w / scale, 2, '#8B6914')
 }
 
-// 绘制家具
+// 绘制家具（优化版）
 function drawFurniture() {
-  // 5个工作位
-  const deskPositions = [
-    [4, 8], [10, 8], [16, 8], [22, 8], [28, 8]
-  ]
+  const w = canvas.width / scale
+  const h = canvas.height / scale
   
-  deskPositions.forEach((pos, idx) => {
+  // 5个工作位 - 根据画布大小动态计算位置
+  const deskCount = 5
+  const deskWidth = 12
+  const spacing = (w - 40) / deskCount
+  
+  for (let i = 0; i < deskCount; i++) {
+    const dx = 20 + i * spacing
+    const dy = h * 0.55
+    
     // 桌子
-    drawRect(pos[0], pos[1] + 3, 10, 1, '#8B6914')
-    drawRect(pos[0], pos[1] + 4, 1, 4, '#5C4010') // 桌腿
-    drawRect(pos[0] + 9, pos[1] + 4, 1, 4, '#5C4010')
+    drawRect(dx, dy, deskWidth, 1, '#8B6914')
+    drawRect(dx, dy + 1, 1, 4, '#5C4010')
+    drawRect(dx + deskWidth - 1, dy + 1, 1, 4, '#5C4010')
     
     // 显示器
-    drawRect(pos[0] + 2, pos[1], 6, 4, '#2A2A3A')
-    drawRect(pos[0] + 2, pos[1], 6, 3, idx < 2 ? '#00D9FF' : '#1A1A2A') // 屏幕
-    drawRect(pos[0] + 4, pos[1] + 4, 2, 1, '#4A4A5A') // 底座
-    drawRect(pos[0] + 3, pos[1] + 5, 4, 1, '#3A3A4A')
+    drawRect(dx + 2, dy - 5, 8, 5, '#2A2A3A')
+    drawRect(dx + 2, dy - 5, 8, 4, i < 2 ? '#00D9FF' : '#1A1A2A')
+    drawRect(dx + 4, dy, 4, 1, '#4A4A5A')
+    drawRect(dx + 3, dy + 1, 6, 1, '#3A3A4A')
     
     // 键盘
-    drawRect(pos[0] + 3, pos[1] + 2, 4, 1, '#4A4A5A')
-    
-    // 椅子
-    drawRect(pos[0] + 4, pos[1] + 6, 3, 1, '#5D4037')
-    drawRect(pos[0] + 5, pos[1] + 7, 1, 2, '#3E2723')
-  })
+    drawRect(dx + 3, dy - 2, 6, 1, '#4A4A5A')
+  }
   
   // 窗帘
   for (let i = 0; i < 5; i++) {
-    drawRect(2 + i * 7, 2, 2, 18, '#E8B4B8')
-    drawRect(3 + i * 7, 2, 1, 18, '#F0C8CC')
+    drawRect(5 + i * 15, 5, 2, 25, '#E8B4B8')
+    drawRect(6 + i * 15, 5, 1, 25, '#F0C8CC')
   }
+  
   // 窗户
-  drawRect(3, 3, 5, 8, '#87CEEB')
-  drawRect(10, 3, 5, 8, '#87CEEB')
-  drawRect(17, 3, 5, 8, '#87CEEB')
-  drawRect(24, 3, 5, 8, '#87CEEB')
-  drawRect(31, 3, 5, 8, '#87CEEB')
+  for (let i = 0; i < 5; i++) {
+    drawRect(6 + i * 15, 8, 8, 12, '#87CEEB')
+  }
   
   // 沙发
-  drawRect(2, 16, 8, 2, '#8B4513')
-  drawRect(2, 15, 2, 3, '#A0522D')
-  drawRect(8, 15, 2, 3, '#A0522D')
-  drawRect(2, 14, 8, 2, '#A0522D')
+  drawRect(5, h * 0.7, 15, 4, '#8B4513')
+  drawRect(5, h * 0.68, 4, 5, '#A0522D')
+  drawRect(16, h * 0.68, 4, 5, '#A0522D')
+  drawRect(5, h * 0.66, 15, 3, '#A0522D')
   
   // 书架
-  drawRect(2, 6, 3, 10, '#654321')
+  drawRect(5, h * 0.35, 6, 18, '#654321')
   for (let i = 0; i < 4; i++) {
-    drawRect(2, 7 + i * 2, 2, 1, '#E74C3C')
-    drawRect(2, 8 + i * 2, 2, 1, '#3498DB')
+    drawRect(6, h * 0.38 + i * 4, 4, 2, [0xE74C3C, 0x3498DB, 0x2ECC71, 0xF1C40F][i])
   }
   
   // 服务器机柜
-  drawRect(34, 10, 4, 12, '#2A2A2A')
-  for (let i = 0; i < 6; i++) {
-    drawRect(35, 12 + i * 2, 2, 1, '#FF0000')
+  drawRect(w - 8, h * 0.35, 6, 22, '#2A2A2A')
+  for (let i = 0; i < 8; i++) {
+    drawRect(w - 7, h * 0.38 + i * 2.5, 4, 1, '#FF0000')
   }
   
   // 咖啡机
-  drawRect(32, 17, 3, 4, '#6F4E37')
-  drawRect(32, 16, 3, 1, '#A0A0A0')
+  drawRect(w - 10, h * 0.65, 4, 6, '#6F4E37')
+  drawRect(w - 10, h * 0.64, 4, 2, '#A0A0A0')
   
   // 盆栽
-  drawRect(6, 18, 2, 3, '#8B4513')
-  drawRect(5, 15, 4, 4, '#228B22')
-  drawRect(6, 14, 2, 2, '#32CD32')
+  drawRect(10, h * 0.72, 3, 5, '#8B4513')
+  drawRect(9, h * 0.58, 5, 6, '#228B22')
+  drawRect(10, h * 0.55, 3, 3, '#32CD32')
   
   // 猫
-  drawRect(26, 19, 3, 2, '#FFA500')
-  drawRect(26, 18, 2, 1, '#FF8800')
+  drawRect(w * 0.7, h * 0.75, 4, 3, '#FFA500')
+  drawRect(w * 0.7, h * 0.73, 3, 2, '#FF8800')
   
   // 时钟
-  drawRect(35, 3, 3, 3, '#FFFFFF')
-  drawRect(36, 4, 1, 1, '#000000')
+  drawRect(w * 0.85, 8, 4, 4, '#FFFFFF')
+  drawRect(w * 0.85 + 1, 9, 2, 2, '#000000')
   
   // 招牌
-  drawRect(15, 1, 10, 2, '#FFA500')
+  drawRect(w * 0.4, 3, 15, 3, '#FFA500')
 }
 
 function render(timestamp) {
@@ -360,6 +348,8 @@ function render(timestamp) {
   if (elapsed > frameTime) {
     frame++
     lastTime = timestamp
+    
+    if (!ctx || !canvas) return
     
     // 清空
     ctx.fillStyle = '#1a1a2e'
@@ -372,11 +362,16 @@ function render(timestamp) {
     // 动画相位
     const animPhase = (frame % 12) / 3
     
-    // 绘制5个角色
-    const positions = [[4, 5], [10, 5], [16, 5], [22, 5], [28, 5]]
-    positions.forEach((pos, i) => {
-      drawCharacter(rpgStyles[i], pos[0], pos[1], animPhase + i * 0.5)
-    })
+    // 绘制5个角色 - 根据画布大小调整位置
+    const w = canvas.width / scale
+    const h = canvas.height / scale
+    const spacing = (w - 40) / 5
+    
+    for (let i = 0; i < 5; i++) {
+      const x = 20 + i * spacing
+      const y = h * 0.45
+      drawCharacter(rpgStyles[i], x, y, animPhase + i * 0.5)
+    }
   }
   
   animationId = requestAnimationFrame(render)
@@ -386,33 +381,34 @@ function removeVisitor(id) {
   visitors.value = visitors.value.filter(v => v.id !== id)
 }
 
+function handleResize() {
+  if (!canvasRef.value || !canvasRef.value.parentElement) return
+  const container = canvasRef.value.parentElement
+  canvas.width = container.clientWidth
+  canvas.height = container.clientHeight
+  
+  // 计算缩放 - 让内容适配画布
+  const baseWidth = 120
+  const baseHeight = 80
+  scale = Math.min(canvas.width / baseWidth, canvas.height / baseHeight)
+  
+  // 限制缩放范围
+  scale = Math.max(1, Math.min(scale, 4))
+}
+
 onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
-  // 使用固定尺寸确保能显示
-  canvas.width = 400
-  canvas.height = 250
+  // 初始尺寸
+  handleResize()
   
-  console.log('Canvas size:', canvas.width, canvas.height)
-  
-  // 使用平滑缩放
-  ctx.imageSmoothingEnabled = true
-  ctx.imageSmoothingQuality = 'high'
-  
+  // 启动渲染
   render(0)
   
-  // 监听窗口大小变化
+  // 监听窗口变化
   window.addEventListener('resize', handleResize)
 })
-
-function handleResize() {
-  const container = canvasRef.value?.parentElement
-  if (!container || !canvas) return
-  const rect = container.getBoundingClientRect()
-  canvas.width = rect.width
-  canvas.height = rect.height
-}
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
@@ -439,7 +435,6 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   position: relative;
   background: #1a1a2e;
   overflow: hidden;
-  min-height: 400px;
 }
 
 .canvas { 
@@ -448,7 +443,6 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   left: 0;
   width: 100%;
   height: 100%;
-  image-rendering: auto;
 }
 
 .side-panel {
