@@ -1,6 +1,7 @@
 <template>
   <div class="container">
     <div class="canvas-container">
+      <img ref="bgImage" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
       <canvas ref="canvasRef" class="canvas"></canvas>
     </div>
     
@@ -90,6 +91,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const canvasRef = ref(null)
+const bgImage = ref(null)
 const systemStatus = ref('idle')
 const visitors = ref([
   { id: 1, name: '访客A', avatar: '🧑‍💻' },
@@ -99,256 +101,75 @@ const visitors = ref([
 let ctx, canvas
 let animationId = null
 let lastTime = 0
-const FPS = 6
+const FPS = 8
 const frameTime = 1000 / FPS
 
 let frame = 0
 
-function drawRect(x, y, w, h, color) {
-  ctx.fillStyle = color
-  ctx.fillRect(x, y, w, h)
-}
+// 角色精灵图
+const characters = [
+  { name: '蓝发', src: '/character-blue.png', x: 150, y: 280 },
+  { name: '紫发', src: '/character-purple.png', x: 350, y: 280 },
+  { name: '橙发', src: '/character-orange.png', x: 550, y: 280 },
+  { name: '绿发', src: '/character-green.png', x: 750, y: 280 },
+  { name: '粉发', src: '/character-pink.png', x: 950, y: 280 },
+]
 
-function drawText(text, x, y, color, size = 12) {
-  ctx.fillStyle = color
-  ctx.font = `${size}px monospace`
-  ctx.fillText(text, x, y)
-}
+const charImages = []
+let charImagesLoaded = 0
 
-function drawScene() {
-  const w = canvas.width
-  const h = canvas.height
-  const blink = frame % 8 < 4
-  const bounce = Math.floor(frame / 4) % 2 === 0 ? 0 : -2
-  
-  // 缩放比例
-  const scale = Math.min(w / 100, h / 60)
-  const offsetX = (w - 100 * scale) / 2
-  const offsetY = (h - 60 * scale) / 2
-  
-  ctx.save()
-  ctx.translate(offsetX, offsetY)
-  ctx.scale(scale, scale)
-  
-  // 地板
-  for (let i = 0; i < 100; i += 2) {
-    for (let j = 25; j < 60; j += 2) {
-      drawRect(i, j, 2, 2, ((i + j) / 2) % 2 === 0 ? '#D4A574' : '#C49A6C')
+function loadCharacterImages() {
+  characters.forEach((char, index) => {
+    const img = new Image()
+    img.src = char.src
+    img.onload = () => {
+      charImages[index] = img
+      charImagesLoaded++
     }
-  }
-  
-  // 墙壁
-  for (let i = 0; i < 100; i += 2) {
-    for (let j = 0; j < 25; j += 2) {
-      drawRect(i, j, 2, 2, '#F5E6C8')
-    }
-  }
-  
-  // 墙裙
-  drawRect(0, 22, 100, 3, '#8B6914')
-  
-  // 房间分隔墙
-  drawRect(33 - 1, 0, 3, 22, '#8B7355')
-  drawRect(33 - 0.5, 0, 1, 22, '#6B5344')
-  drawRect(66 - 1, 0, 3, 22, '#8B7355')
-  drawRect(66 - 0.5, 0, 1, 22, '#6B5344')
-  
-  // ===== 左侧房间：办公区 =====
-  drawRect(2, 3, 10, 10, '#1E3A5F')
-  drawRect(5, 5, 4, 3, '#000000')
-  drawText('E.T.', 4, 14, '#FFFFFF', 4)
-  
-  // 办公桌
-  drawRect(3, 35, 18, 3, '#8B4513')
-  drawRect(4, 38, 2, 5, '#5D4037')
-  drawRect(17, 38, 2, 5, '#5D4037')
-  // 显示器
-  drawRect(6, 28, 8, 7, '#2A2A2A')
-  drawRect(7, 29, 6, 5, '#00D9FF')
-  drawRect(8, 35, 3, 2, '#4A4A4A')
-  // 笔记本
-  drawRect(14, 30, 5, 4, '#C0C0C0')
-  // 马克杯
-  drawRect(18, 32, 2, 2, '#FFFFFF')
-  // 台灯
-  drawRect(20, 33, 1, 3, '#8B4513')
-  drawRect(19.5, 30, 3, 3, '#F5DEB3')
-  
-  // 椅子
-  drawRect(8, 32, 5, 3, '#5D4037')
-  drawRect(9, 30, 3, 2, '#5D4037')
-  
-  // 紫色怪物（更精细）
-  drawRect(6 + bounce, 33, 6, 5, '#9B59B6')
-  drawRect(7 + bounce, 31, 1, 2, '#9B59B6')
-  drawRect(10 + bounce, 31, 1, 2, '#9B59B6')
-  drawRect(8 + bounce, 30, 2, 2, '#F1C40F')
-  drawRect(5 + bounce, 34, 2, 1, '#E74C3C')
-  drawRect(11 + bounce, 34, 2, 1, '#E74C3C')
-  drawRect(7 + bounce, 34, 1.2, 1.2, '#FFFFFF')
-  drawRect(10 + bounce, 34, 1.2, 1.2, '#FFFFFF')
-  drawRect(7.3 + bounce, 34.3, 0.6, 0.6, '#000000')
-  drawRect(10.3 + bounce, 34.3, 0.6, 0.6, '#000000')
-  if (blink) {
-    drawRect(5 + bounce, 33, 1, 1, '#3498DB')
-    drawRect(12 + bounce, 33, 1, 1, '#3498DB')
-  }
-  
-  // 绿色恐龙（更精细）
-  drawRect(8, 42, 5, 4, '#2ECC71')
-  drawRect(7, 41, 3, 2, '#2ECC71')
-  drawRect(6, 42, 1, 2, '#2ECC71')
-  drawRect(12, 42, 1, 2, '#2ECC71')
-  drawRect(8, 42, 1.2, 1.2, '#000000')
-  drawRect(11, 42, 1.2, 1.2, '#000000')
-  drawRect(9, 44, 2, 0.8, '#27AE60')
-  
-  // 对话气泡 - 修复文字
-  drawRect(4, 36, 14, 6, '#FFFFFF')
-  drawRect(4, 42, 3, 1, '#FFFFFF')
-  drawText('IDLE', 6, 41, '#000000', 5)
-  
-  // 猫窝+猫
-  drawRect(2, 45, 6, 3, '#A0A0A0')
-  drawRect(3, 44, 4, 2, '#FF8C00')
-  drawRect(3.5, 44.5, 0.8, 0.8, '#000000')
-  drawRect(5.5, 44.5, 0.8, 0.8, '#000000')
-  
-  // 幽灵
-  drawRect(22, 45, 4, 5, '#90EE90')
-  drawRect(23, 44, 2, 1, '#90EE90')
-  drawRect(21, 46, 1, 2, '#90EE90')
-  drawRect(26, 46, 1, 2, '#90EE90')
-  drawRect(22.5, 46, 0.8, 0.8, '#000000')
-  drawRect(25, 46, 0.8, 0.8, '#000000')
-  
-  // 花盆+多肉
-  drawRect(25, 43, 4, 3, '#8B4513')
-  drawRect(25.5, 41, 3, 2, '#228B22')
-  drawRect(26, 40, 1, 1, '#32CD32')
-  // 边柜
-  drawRect(30, 38, 5, 8, '#5D4037')
-  // 相框
-  drawRect(31, 35, 3, 4, '#8B4513')
-  drawRect(31.5, 36, 2, 2, '#FFD700')
-  // 落地灯
-  drawRect(36, 35, 1, 10, '#8B4513')
-  drawRect(34.5, 30, 4, 5, '#F5DEB3')
-  drawRect(35, 29, 3, 1, '#FFFF00')
-  
-  // ===== 中间房间：休闲区 =====
-  drawRect(38, 3, 15, 8, '#228B22')
-  drawText('HOW YOU', 39, 7, '#FFFFFF', 3)
-  drawText("DOIN'", 40, 10, '#FFFFFF', 3)
-  drawText('FRIENDS', 41, 13, '#FFFFFF', 3)
-  
-  // 沙发
-  drawRect(38, 38, 14, 5, '#F5DEB3')
-  drawRect(38, 37, 14, 1, '#DEB887')
-  drawRect(40, 40, 3, 2, '#8B4513')
-  drawRect(39, 36.5, 12, 1.5, '#DEB887')
-  
-  // 茶几
-  drawRect(43, 44, 8, 3, '#8B4513')
-  // 咖啡机
-  drawRect(44, 40, 5, 5, '#A0A0A0')
-  drawRect(45, 41, 3, 2, '#505050')
-  if (blink) {
-    drawRect(45, 38.5, 1, 1, '#CCCCCC')
-    drawRect(47, 38, 1, 1, '#CCCCCC')
-  }
-  // 马克杯
-  drawRect(47, 43, 1.5, 1.5, '#FFFFFF')
-  drawRect(49, 43, 1.5, 1.5, '#FFFFFF')
-  
-  // 大绿植
-  drawRect(50, 35, 5, 5, '#8B4513')
-  drawRect(50, 30, 1, 5, '#228B22')
-  drawRect(52, 28, 1.5, 7, '#2ECC71')
-  drawRect(54, 30, 1, 5, '#228B22')
-  
-  // 边柜+台灯
-  drawRect(38, 32, 4, 6, '#5D4037')
-  drawRect(39, 30, 1, 2, '#8B4513')
-  drawRect(38, 28, 3, 2, '#F5DEB3')
-  drawRect(39, 27, 2, 1, '#FFFF00')
-  
-  drawRect(52, 32, 4, 6, '#5D4037')
-  drawRect(53, 30, 1, 2, '#8B4513')
-  drawRect(52, 28, 3, 2, '#F5DEB3')
-  drawRect(53, 27, 2, 1, '#FFFF00')
-  
-  // ===== 右侧房间：机房+休息 =====
-  drawRect(70, 3, 14, 7, '#228B22')
-  drawRect(72, 5, 10, 3, '#FFFFFF')
-  drawText('CENTRAL', 73, 7, '#FFFFFF', 2.5)
-  drawText('PERK', 74, 10, '#FFFFFF', 2.5)
-  
-  // 服务器机柜
-  drawRect(70, 30, 7, 12, '#1E3A5F')
-  drawRect(72, 32, 3, 8, '#2C3E50')
-  drawRect(73, 33, 1, 1, '#00FF00')
-  drawRect(73, 35, 1, 1, '#00FF00')
-  drawRect(73, 37, 1, 1, '#00FF00')
-  drawRect(73, 39, 1, 1, '#00FF00')
-  
-  drawRect(78, 30, 7, 12, '#1E3A5F')
-  drawRect(80, 32, 3, 8, '#2C3E50')
-  drawRect(81, 33, 1, 1, '#00FF00')
-  drawRect(81, 35, 1, 1, '#00FF00')
-  drawRect(81, 37, 1, 1, '#00FF00')
-  drawRect(81, 39, 1, 1, '#00FF00')
-  
-  // 告警灯
-  drawRect(69, 28, 2, 2, blink ? '#FF0000' : '#550000')
-  drawRect(86, 28, 2, 2, blink ? '#FF0000' : '#550000')
-  drawRect(73, 27, 4, 1, '#FFFF00')
-  drawText('!', 74, 29, '#000000', 3)
-  
-  // 文件柜
-  drawRect(85, 35, 5, 8, '#808080')
-  drawRect(86, 36, 3, 1, '#606060')
-  drawRect(86, 38, 3, 1, '#606060')
-  drawRect(86, 40, 3, 1, '#606060')
-  
-  // 边柜+台灯
-  drawRect(83, 44, 4, 5, '#5D4037')
-  drawRect(84, 42, 1, 2, '#8B4513')
-  drawRect(83, 40, 3, 2, '#F5DEB3')
-  drawRect(84, 39, 2, 1, '#FFFF00')
-  
-  // 床
-  drawRect(70, 48, 12, 7, '#F5DEB3')
-  drawRect(72, 49, 10, 5, '#FFFFFF')
-  drawRect(73, 50, 3, 3, '#FFFFFF')
-  // 床尾绿植
-  drawRect(80, 52, 3, 3, '#8B4513')
-  drawRect(80, 50, 3, 2, '#228B22')
-  
-  // 底部横幅
-  drawRect(25, 0.5, 50, 4, '#5D4037')
-  drawRect(24, 1.5, 1, 2, '#FFD700')
-  drawRect(75, 1.5, 1, 2, '#FFD700')
-  drawText('niko办公室', 38, 4, '#FFD700', 5)
-  
-  ctx.restore()
+  })
 }
 
-function render(timestamp) {
-  if (!lastTime) lastTime = timestamp
-  const elapsed = timestamp - lastTime
+function onBgLoad() {
+  // 背景加载完成后开始渲染
+  render()
+}
+
+function drawCharacters() {
+  const frameCol = frame % 4 // 4帧动画
   
-  if (elapsed > frameTime) {
-    frame++
-    lastTime = timestamp
+  characters.forEach((char, index) => {
+    const img = charImages[index]
+    if (!img) return
     
-    if (!ctx || !canvas) return
+    // 每个角色在4帧中显示不同的姿态
+    const srcX = frameCol * (img.width / 4)
+    const srcY = 0
+    const srcW = img.width / 4
+    const srcH = img.height
     
-    ctx.fillStyle = '#1a1a2e'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    const destX = char.x
+    const destY = char.y
+    const destW = 120
+    const destH = 180
     
-    drawScene()
-  }
+    ctx.drawImage(
+      img,
+      srcX, srcY, srcW, srcH,
+      destX, destY, destW, destH
+    )
+  })
+}
+
+function render() {
+  if (!ctx || !canvas) return
+  
+  frame++
+  
+  // 清空
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  
+  // 绘制角色精灵
+  drawCharacters()
   
   animationId = requestAnimationFrame(render)
 }
@@ -361,10 +182,15 @@ onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   
+  // 设置画布大小
   canvas.width = canvasRef.value.parentElement.clientWidth
   canvas.height = canvasRef.value.parentElement.clientHeight
   
-  render(0)
+  // 加载角色图片
+  loadCharacterImages()
+  
+  // 等待背景加载
+  render()
 })
 
 onUnmounted(() => {
@@ -377,15 +203,47 @@ onUnmounted(() => {
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
-.container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; background: #1a1a2e; }
-.canvas-container { flex: 1; position: relative; background: #1a1a2e; overflow: hidden; }
-.canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.container { 
+  width: 100vw; 
+  height: 100vh; 
+  display: flex; 
+  flex-direction: column; 
+  position: relative;
+  background: #1a1a2e;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+  background: #1a1a2e;
+  overflow: hidden;
+}
+
+.bg-scene {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.canvas { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
 
 .side-panel {
   position: absolute; top: 0; right: 0;
   width: 220px; height: calc(100% - 110px);
   background: linear-gradient(180deg, #1a1a2e 0%, #2d2d44 100%);
   border-left: 3px solid #E74C3C; padding: 15px; overflow-y: auto;
+  z-index: 10;
 }
 .panel-title { font-size: 14px; color: #F1C40F; margin-bottom: 15px; text-align: center; padding-bottom: 10px; border-bottom: 2px solid #E74C3C; }
 .status-list { display: flex; flex-direction: column; gap: 10px; }
@@ -398,6 +256,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   height: 110px; min-height: 110px;
   background: linear-gradient(180deg, #2C2C3E 0%, #1A1A2E 100%);
   border-top: 4px solid #E74C3C; display: flex; padding: 8px; gap: 8px;
+  z-index: 10;
 }
 .ui-section { background: #3A3A4A; border: 3px solid #000; padding: 6px; }
 .ui-section.notes { flex: 1; }
