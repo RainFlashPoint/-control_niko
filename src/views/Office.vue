@@ -171,8 +171,23 @@ function drawCharacters() {
 }
 
 function render() {
-  if (!ctx || !canvas) return
+  // 等待图片加载完成
+  if (charImagesLoaded < characters.length) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
   
+  if (!ctx || !canvas) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  
+  const now = Date.now()
+  if (now - lastTime < frameTime) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  lastTime = now
   frame++
   
   // 清空
