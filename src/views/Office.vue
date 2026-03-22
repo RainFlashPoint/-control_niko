@@ -397,6 +397,9 @@ onMounted(() => {
   canvas.width = rect.width
   canvas.height = rect.height
   
+  console.log('Canvas size:', canvas.width, canvas.height)
+  console.log('Container size:', rect.width, rect.height)
+  
   // 使用平滑缩放
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
