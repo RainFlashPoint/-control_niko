@@ -108,93 +108,83 @@ let frame = 0
 // 绘制矩形
 function drawRect(x, y, w, h, color) {
   ctx.fillStyle = color
-  ctx.fillRect(x * scale, y * scale, w * scale, h * scale)
+  ctx.fillRect(Math.floor(x * scale), Math.floor(y * scale), Math.floor(w * scale), Math.floor(h * scale))
 }
 
-// 绘制像素点
-function drawPixel(x, y, color) {
-  ctx.fillStyle = color
-  ctx.fillRect(x * scale, y * scale, scale, scale)
-}
-
-// 绘制小龙虾Logo
-function drawLobsterLogo(cx, cy, size) {
-  const s = size
+// 绘制小龙虾logo
+function drawLobster(cx, cy, s) {
   // 身体
-  drawRect(cx - s*2, cy - s, s*4, s*2, '#FF4444')
-  drawRect(cx - s*3, cy, s*6, s, '#FF4444')
+  drawRect(cx - s*2.5, cy - s*0.8, s*5, s*1.8, '#E74C3C')
+  drawRect(cx - s*3, cy + s*0.5, s*6, s*1.2, '#E74C3C')
   // 尾巴
-  for (let i = 0; i < 3; i++) {
-    drawRect(cx - s*1 + i*s*0.8, cy + s, s, s, '#FF4444')
+  for (let i = 0; i < 5; i++) {
+    drawRect(cx - s*2 + i*s*1.2, cy + s*1.5, s*1, s*0.8, '#E74C3C')
   }
   // 钳子
-  drawRect(cx - s*4, cy - s*0.5, s, s*0.5, '#FF6666')
-  drawRect(cx + s*3, cy - s*0.5, s, s*0.5, '#FF6666')
+  drawRect(cx - s*4, cy - s*0.3, s*1.2, s*0.8, '#FF6B6B')
+  drawRect(cx + s*2.8, cy - s*0.3, s*1.2, s*0.8, '#FF6B6B')
   // 眼睛
-  drawPixel(cx - s*0.5, cy - s*0.5, '#FFFFFF')
-  drawPixel(cx + s*0.5, cy - s*0.5, '#FFFFFF')
-  drawPixel(cx - s*0.5, cy - s*0.5, '#000000')
-  drawPixel(cx + s*0.5, cy - s*0.5, '#000000')
+  drawRect(cx - s*0.8, cy - s*0.5, s*0.6, s*0.6, '#FFFFFF')
+  drawRect(cx + s*0.3, cy - s*0.5, s*0.6, s*0.6, '#FFFFFF')
+  drawRect(cx - s*0.6, cy - s*0.4, s*0.3, s*0.3, '#000000')
+  drawRect(cx + s*0.5, cy - s*0.4, s*0.3, s*0.3, '#000000')
+  // 触角
+  drawRect(cx - s*1.5, cy - s*1.5, s*0.3, s*1, '#E74C3C')
+  drawRect(cx + s*1.2, cy - s*1.5, s*0.3, s*1, '#E74C3C')
 }
 
-// 绘制人物（背对显示器）
-function drawPerson(x, y, color1, color2, animPhase) {
+// 绘制N标志
+function drawN(cx, cy, s) {
+  const color = '#E74C3C'
+  // 左边竖
+  drawRect(cx, cy, s, s*3, color)
+  // 右边竖
+  drawRect(cx + s*2, cy, s, s*3, color)
+  // 上面横
+  drawRect(cx, cy, s*3, s, color)
+  // 下面横
+  drawRect(cx + s*2, cy + s*2, s*1, s, color)
+  // 斜线
+  drawRect(cx + s, cy, s, s, color)
+  drawRect(cx + s + 0.5, cy + s, s, s, color)
+  drawRect(cx + s + 1, cy + s*1.5, s, s*0.5, color)
+}
+
+// 绘制人物（背坐）
+function drawPerson(x, y, hairColor, shirtColor, animPhase) {
   const bounce = Math.floor(animPhase) % 2 === 0 ? 0 : -1
   
-  // 头发/头
-  drawRect(x + 2, y + bounce, 4, 4, color1)
-  drawRect(x + 1, y + 1 + bounce, 6, 3, color1)
+  // 头发
+  drawRect(x + 1, y + bounce, 5, 4, hairColor)
+  drawRect(x, y + 1 + bounce, 7, 3, hairColor)
   
-  // 脸部（只显示侧脸）
-  drawRect(x + 4, y + 2 + bounce, 2, 2, '#FFD9B3')
+  // 脸
+  drawRect(x + 2, y + 3 + bounce, 3, 2, '#FFD9B3')
   
-  // 身体
-  drawRect(x + 1, y + 6 + bounce, 6, 6, color2)
-  drawRect(x, y + 7 + bounce, 8, 4, color2)
+  // 身体/衬衫
+  drawRect(x + 1, y + 6 + bounce, 5, 5, shirtColor)
+  drawRect(x, y + 7 + bounce, 7, 4, shirtColor)
   
   // 手臂
-  drawRect(x - 1, y + 8 + bounce, 2, 3, color2)
-  drawRect(x + 7, y + 8 + bounce, 2, 3, color2)
+  drawRect(x - 1, y + 7 + bounce, 2, 3, shirtColor)
+  drawRect(x + 6, y + 7 + bounce, 2, 3, shirtColor)
   
   // 椅子
-  drawRect(x + 1, y + 10, 6, 2, '#4A4A4A')
-  drawRect(x + 2, y + 12, 4, 3, '#3A3A3A')
-}
-
-// 绘制窗帘
-function drawCurtain(x, y, w, h) {
-  for (let i = 0; i < w; i += 2) {
-    const shade = i % 4 === 0 ? '#E8B4B8' : '#F0C8CC'
-    drawRect(x + i, y, 2, h, shade)
-  }
-  // 窗帘杆
-  drawRect(x - 1, y, w + 2, 1, '#8B4513')
-  // 窗帘顶部
-  drawRect(x, y - 1, w, 2, '#D4A4A8')
+  drawRect(x + 1, y + 11, 5, 2, '#3A3A3A')
+  drawRect(x + 2, y + 13, 3, 2, '#2A2A2A')
 }
 
 // 绘制空调
-function drawAirConditioner(x, y, w) {
-  drawRect(x, y, w, 3, '#E0E0E0')
-  drawRect(x + 1, y + 1, w - 2, 1, '#B0B0B0')
+function drawAC(x, y, w) {
+  // 主体
+  drawRect(x, y, w, 3, '#D0D0D0')
+  drawRect(x, y + 1, w, 2, '#B0B0B0')
   // 出风口
   for (let i = 0; i < w - 2; i += 2) {
     drawRect(x + 1 + i, y + 2, 1, 1, '#909090')
   }
-}
-
-// 绘制N标志
-function drawNLogo(x, y, size) {
-  const s = size
-  // N字
-  drawRect(x, y, s, s*3, '#FF4444')
-  drawRect(x + s*2, y, s, s*3, '#FF4444')
-  drawRect(x, y, s*3, s, '#FF4444')
-  drawRect(x + s*2, y + s*2, s*1, s, '#FF4444')
-  // 斜线
-  for (let i = 0; i < s*2; i++) {
-    drawRect(x + s + i, y + i, s, s, '#FF4444')
-  }
+  // 指示灯
+  drawRect(x + w - 2, y + 1, 1, 1, '#00FF00')
 }
 
 // 绘制房间
@@ -202,26 +192,23 @@ function drawRoom() {
   const w = canvas.width / scale
   const h = canvas.height / scale
   
-  // 地板 - 木纹
-  for (let i = 0; i < w; i += 4) {
-    for (let j = h * 0.4; j < h; j += 4) {
-      const shade = ((i + j) / 4) % 2 === 0 ? '#C9A86C' : '#B8956A'
-      drawRect(i, j, 4, 4, shade)
+  // 地板 - 米黄色木地板
+  for (let i = 0; i < w; i += 3) {
+    for (let j = h * 0.4; j < h; j += 3) {
+      const shade = ((i + j) / 3) % 2 === 0 ? '#D4A574' : '#C9A066'
+      drawRect(i, j, 3, 3, shade)
     }
   }
   
-  // 墙壁 - 上方
-  for (let i = 0; i < w; i += 4) {
-    for (let j = 0; j < h * 0.4; j += 4) {
-      drawRect(i, j, 4, 4, '#E8DCC4')
+  // 墙壁 - 浅黄色
+  for (let i = 0; i < w; i += 3) {
+    for (let j = 0; j < h * 0.4; j += 3) {
+      drawRect(i, j, 3, 3, '#F5E6C8')
     }
   }
   
-  // 墙裙
-  drawRect(0, h * 0.38, w, 3, '#8B6914')
-  
-  // 地板和墙脚线
-  drawRect(0, h * 0.4 - 1, w, 1, '#A08060')
+  // 墙裙 - 深棕色
+  drawRect(0, h * 0.28, w, 3, '#8B6914')
 }
 
 // 绘制家具
@@ -229,87 +216,96 @@ function drawFurniture() {
   const w = canvas.width / scale
   const h = canvas.height / scale
   
-  // 5个工作位
+  // ===== 左边柜子 =====
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 2; col++) {
+      const cx = 8 + col * 6
+      const cy = h * 0.32 + row * 8
+      drawRect(cx, cy, 5, 7, '#4A4A4A')
+      drawRect(cx + 2, cy + 2, 1, 3, '#3A3A3A')
+    }
+  }
+  // 柜子顶
+  drawRect(5, h * 0.3, 14, 2, '#3A3A3A')
+  
+  // ===== 5个工作位 =====
   const deskCount = 5
-  const deskWidth = 20
-  const spacing = (w - 40) / deskCount
+  const spacing = (w - 50) / (deskCount - 1)
   
   for (let i = 0; i < deskCount; i++) {
-    const dx = 20 + i * spacing
+    const dx = 30 + i * spacing
     const dy = h * 0.55
     
     // 桌子
-    drawRect(dx, dy, deskWidth, 2, '#8B6914')
-    drawRect(dx, dy + 2, 2, 8, '#5C4010')
-    drawRect(dx + deskWidth - 2, dy + 2, 2, 8, '#5C4010')
+    drawRect(dx, dy, 16, 2, '#C9A066')
+    drawRect(dx, dy + 2, 2, 6, '#8B6914')
+    drawRect(dx + 14, dy + 2, 2, 6, '#8B6914')
     
     // 显示器
-    drawRect(dx + 4, dy - 8, 12, 8, '#2A2A3A')
-    drawRect(dx + 5, dy - 7, 10, 6, '#00D9FF')
-    drawRect(dx + 8, dy, 4, 2, '#4A4A5A')
-    drawRect(dx + 6, dy + 2, 8, 1, '#3A3A4A')
+    drawRect(dx + 3, dy - 10, 10, 8, '#2A2A2A')
+    drawRect(dx + 4, dy - 9, 8, 6, '#00D9FF')
+    drawRect(dx + 6, dy - 2, 4, 2, '#4A4A4A')
+    drawRect(dx + 5, dy, 6, 1, '#3A3A3A')
     
     // 键盘
-    drawRect(dx + 5, dy - 2, 10, 2, '#4A4A5A')
+    drawRect(dx + 4, dy - 3, 8, 1, '#4A4A4A')
     
     // 主机箱
-    drawRect(dx + deskWidth - 3, dy - 10, 4, 10, '#3A3A3A')
+    drawRect(dx + 12, dy - 12, 4, 10, '#3A3A3A')
   }
   
-  // 窗帘 - 3个窗户
-  const curtainWidth = 15
+  // ===== 3扇窗户 =====
+  const windowWidth = 18
   for (let i = 0; i < 3; i++) {
-    const cx = 15 + i * 35
-    drawCurtain(cx, 8, curtainWidth, 25)
-    // 窗户
-    drawRect(cx + 2, 10, curtainWidth - 4, 15, '#87CEEB')
+    const wx = 25 + i * 38
+    const wy = 8
+    
     // 窗户框
-    drawRect(cx + curtainWidth/2 - 1, 10, 2, 15, '#FFFFFF')
-    drawRect(cx + 2, 17, curtainWidth - 4, 2, '#FFFFFF')
+    drawRect(wx - 1, wy - 1, windowWidth + 2, 18, '#FFFFFF')
+    // 玻璃
+    drawRect(wx, wy, windowWidth, 16, '#87CEEB')
+    // 窗格
+    drawRect(wx + windowWidth/2 - 0.5, wy, 1, 16, '#FFFFFF')
+    drawRect(wx, wy + 8, windowWidth, 1, '#FFFFFF')
+    
+    // 窗帘
+    drawRect(wx - 2, wy - 2, 3, 20, '#E8B4B8')
+    drawRect(wx + windowWidth - 1, wy - 2, 3, 20, '#E8B4B8')
+    drawRect(wx - 1, wy - 2, windowWidth + 2, 2, '#D4A0A4')
   }
   
-  // 空调
-  drawAirConditioner(w * 0.7, 3, 20)
+  // ===== 空调 =====
+  drawAC(w * 0.6, 3, 25)
+  // 管道
+  drawRect(w * 0.3, 4, w * 0.3, 1, '#B0B0B0')
+  drawRect(w * 0.6, 1, w * 0.3, 1, '#B0B0B0')
   
-  // N标志
-  drawNLogo(w * 0.48, 8, 3)
+  // ===== N标志 =====
+  drawN(w * 0.48, 12, 2)
   
-  // 小龙虾Logo - 右侧
-  drawLobsterLogo(w * 0.88, h * 0.25, 4)
-  
-  // 空调管道
-  drawRect(5, 5, w * 0.3, 2, '#B0B0B0')
-  drawRect(w * 0.7, 2, w * 0.3, 2, '#B0B0B0')
-  
-  // 地板上的物品 - 垃圾桶
-  drawRect(10, h - 12, 4, 8, '#606060')
-  drawRect(9, h - 13, 6, 2, '#505050')
-  
-  // 地板上的物品 - 箱子
-  drawRect(w - 15, h - 10, 8, 6, '#8B6914')
-  drawRect(w - 14, h - 11, 6, 1, '#A08020')
+  // ===== 小龙虾logo =====
+  drawLobster(w * 0.88, h * 0.2, 3)
 }
 
 function drawCharacters() {
   const w = canvas.width / scale
   const h = canvas.height / scale
-  const spacing = (w - 40) / 5
+  const spacing = (w - 50) / 4
   
-  // 动画相位
   const animPhase = (frame % 16) / 2
   
-  // 5个工作的人 - 背对
+  // 5个人
   const colors = [
-    ['#4A4A6A', '#708090'],  // 剑士风格
-    ['#4A0060', '#4B0082'],  // 法师风格
-    ['#2A2A3A', '#1C1C1C'],  // 刺客风格
-    ['#8B6914', '#D4AF37'],  // 骑士风格
-    ['#1A4A1A', '#228B22'],  // 弓箭手风格
+    ['#4A4A5A', '#5D6D7E'],  // 灰
+    ['#4A3D5C', '#5B4B8A'],  // 紫
+    ['#3A3A4A', '#4A4A5A'],  // 黑
+    ['#5D4E37', '#8B7355'],   // 棕
+    ['#4A5A4A', '#5D7E5D'],  // 绿
   ]
   
   for (let i = 0; i < 5; i++) {
-    const x = 25 + i * spacing
-    const y = h * 0.42
+    const x = 33 + i * spacing
+    const y = h * 0.43
     drawPerson(x, y, colors[i][0], colors[i][1], animPhase + i * 0.3)
   }
 }
@@ -324,11 +320,9 @@ function render(timestamp) {
     
     if (!ctx || !canvas) return
     
-    // 清空
     ctx.fillStyle = '#1a1a2e'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
-    // 绘制
     drawRoom()
     drawFurniture()
     drawCharacters()
@@ -347,11 +341,10 @@ function handleResize() {
   canvas.width = container.clientWidth
   canvas.height = container.clientHeight
   
-  // 计算缩放
-  const baseWidth = 160
-  const baseHeight = 100
+  const baseWidth = 140
+  const baseHeight = 90
   scale = Math.min(canvas.width / baseWidth, canvas.height / baseHeight)
-  scale = Math.max(1, Math.min(scale, 6))
+  scale = Math.max(1, Math.min(scale, 5))
 }
 
 onMounted(() => {
