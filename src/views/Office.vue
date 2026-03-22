@@ -6,7 +6,7 @@
     <div class="info-panel">
       <div class="panel-header">
         <span class="logo">🎭</span>
-        <span class="title">OpenClaw 3D</span>
+        <span class="title">OpenClaw</span>
         <span class="live-dot"></span>
       </div>
       
@@ -51,7 +51,7 @@
 
     <!-- 底部状态 -->
     <div class="status-bar">
-      <span>🏢 OpenClaw 科技有限公司</span>
+      <span>🏢 OpenClaw</span>
       <span class="time">{{ currentTime }}</span>
       <span :class="{ active: activeCount > 0 }">
         <span class="dot"></span>
@@ -73,278 +73,262 @@ const systemInfo = ref({ hostname: '-', uptime: '0s' })
 const currentTime = ref('')
 const activeCount = ref(0)
 
-let scene, camera, renderer, characters = [], desks = []
+let scene, camera, renderer, characters = [], lights = []
 let animationId = null
 
+// 柔和配色
+const COLORS = {
+  sky: 0xE8F4F8,
+  ground: 0x7CB342,
+  building: 0xFFECB3,
+  buildingDark: 0xFFD54F,
+  windowOff: 0xB0BEC5,
+  windowOn: 0x81C784,
+  desk: 0x8D6E63,
+  deskTop: 0xBCAAA4,
+  chair: 0x5D4037,
+  screen: 0x4FC3F7,
+  screenOff: 0x263238,
+  tree: 0x66BB6A,
+  trunk: 0x8D6E63,
+  character: [0xE57373, 0x64B5F6, 0x81C784]
+}
+
 function init() {
-  // 场景
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x87CEEB)
-  scene.fog = new THREE.Fog(0x87CEEB, 50, 150)
+  scene.background = new THREE.Color(COLORS.sky)
 
-  // 相机
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000)
-  camera.position.set(0, 25, 40)
-  camera.lookAt(0, 5, 0)
+  // 正交相机 - 等轴测视角
+  const aspect = window.innerWidth / window.innerHeight
+  const d = 25
+  camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000)
+  camera.position.set(30, 30, 30)
+  camera.lookAt(0, 0, 0)
 
-  // 渲染器
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(window.innerWidth, window.innerHeight)
-  renderer.shadowMap.enabled = true
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   canvasContainer.value.appendChild(renderer.domElement)
 
-  // 灯光
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambientLight)
+  // 柔和灯光
+  const ambient = new THREE.AmbientLight(0xffffff, 0.7)
+  scene.add(ambient)
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
-  directionalLight.position.set(20, 30, 20)
-  directionalLight.castShadow = true
-  scene.add(directionalLight)
+  const directional = new THREE.DirectionalLight(0xffffff, 0.5)
+  directional.position.set(20, 40, 20)
+  scene.add(directional)
 
-  // 地面
-  const groundGeometry = new THREE.PlaneGeometry(100, 60)
-  const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial)
+  // 地面 - 草地
+  const groundGeo = new THREE.PlaneGeometry(80, 80)
+  const groundMat = new THREE.MeshLambertMaterial({ color: COLORS.ground })
+  const ground = new THREE.Mesh(groundGeo, groundMat)
   ground.rotation.x = -Math.PI / 2
-  ground.position.y = -0.5
-  ground.receiveShadow = true
+  ground.position.y = -0.1
   scene.add(ground)
 
-  // 人行道
-  const sidewalkGeometry = new THREE.PlaneGeometry(100, 15)
-  const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0xC0C0C0 })
-  const sidewalk = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial)
-  sidewalk.rotation.x = -Math.PI / 2
-  sidewalk.position.set(0, 0.01, -20)
-  scene.add(sidewalk)
+  // 道路
+  const roadGeo = new THREE.PlaneGeometry(80, 8)
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x90A4AE })
+  const road = new THREE.Mesh(roadGeo, roadMat)
+  road.rotation.x = -Math.PI / 2
+  road.position.set(0, 0.01, 15)
+  scene.add(road)
 
   // 办公楼
-  createOffice()
+  createBuilding()
 
   // 工位
   createDesks()
 
+  // 角色
+  createCharacters()
+
   // 装饰
   createDecorations()
 
-  // 角色（初始位置）
-  createCharacters()
-
-  // 动画
   animate()
-
-  // 窗口大小调整
   window.addEventListener('resize', onWindowResize)
 }
 
-function createOffice() {
-  // 主体
-  const buildingGeometry = new THREE.BoxGeometry(60, 25, 20)
-  const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0xf5f5f5 })
-  const building = new THREE.Mesh(buildingGeometry, buildingMaterial)
-  building.position.set(0, 12, -15)
-  building.castShadow = true
-  building.receiveShadow = true
+function createBox(w, h, d, color, x, y, z) {
+  const geo = new THREE.BoxGeometry(w, h, d)
+  const mat = new THREE.MeshLambertMaterial({ color })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.position.set(x, y, z)
+  return mesh
+}
+
+function createBuilding() {
+  // 主楼
+  const building = createBox(30, 18, 12, COLORS.building, 0, 9, -8)
   scene.add(building)
 
-  // 窗户
+  // 楼顶
+  const roof = createBox(32, 1, 14, COLORS.buildingDark, 0, 18.5, -8)
+  scene.add(roof)
+
+  // 窗户 - 3行4列
   for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 5; col++) {
-      const windowGeometry = new THREE.PlaneGeometry(6, 5)
-      const isActive = Math.random() > 0.4
-      const windowMaterial = new THREE.MeshStandardMaterial({ 
-        color: isActive ? 0x90EE90 : 0x87CEEB,
-        emissive: isActive ? 0x90EE90 : 0x000000,
-        emissiveIntensity: isActive ? 0.3 : 0
-      })
-      const window = new THREE.Mesh(windowGeometry, windowMaterial)
-      window.position.set(-20 + col * 10, 5 + row * 7, -4.9)
-      scene.add(window)
+    for (let col = 0; col < 4; col++) {
+      const isOn = Math.random() > 0.3
+      const win = createBox(4, 3.5, 0.2, isOn ? COLORS.windowOn : COLORS.windowOff, -10 + col * 6.5, 5 + row * 5, 0.1)
+      scene.add(win)
     }
   }
 
-  // 屋顶
-  const roofGeometry = new THREE.BoxGeometry(62, 2, 22)
-  const roofMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 })
-  const roof = new THREE.Mesh(roofGeometry, roofMaterial)
-  roof.position.set(0, 25, -15)
-  scene.add(roof)
+  // 门
+  const door = createBox(4, 6, 0.2, COLORS.buildingDark, 0, 3, -1.9)
+  scene.add(door)
+
+  // 公司标牌
+  const sign = createBox(10, 2, 0.3, 0xFFFFFF, 0, 16, -1.8)
+  scene.add(sign)
 }
 
 function createDesks() {
-  const deskPositions = [
-    { x: -15, z: 5 },
-    { x: 0, z: 5 },
-    { x: 15, z: 5 }
+  const positions = [
+    { x: -10, z: 2 },
+    { x: 0, z: 2 },
+    { x: 10, z: 2 }
   ]
 
-  deskPositions.forEach((pos, index) => {
-    // 桌面
-    const topGeometry = new THREE.BoxGeometry(8, 0.5, 4)
-    const topMaterial = new THREE.MeshStandardMaterial({ color: 0xDEB887 })
-    const top = new THREE.Mesh(topGeometry, topMaterial)
-    top.position.set(pos.x, 4, pos.z)
-    top.castShadow = true
-    scene.add(top)
-
+  positions.forEach((pos, i) => {
     // 桌腿
-    const legGeometry = new THREE.BoxGeometry(0.5, 4, 0.5)
-    const legMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-    const leg1 = new THREE.Mesh(legGeometry, legMaterial)
-    leg1.position.set(pos.x - 3.5, 2, pos.z - 1.5)
-    scene.add(leg1)
-    const leg2 = new THREE.Mesh(legGeometry, legMaterial)
-    leg2.position.set(pos.x + 3.5, 2, pos.z - 1.5)
-    scene.add(leg2)
-    const leg3 = new THREE.Mesh(legGeometry, legMaterial)
-    leg3.position.set(pos.x - 3.5, 2, pos.z + 1.5)
-    scene.add(leg3)
-    const leg4 = new THREE.Mesh(legGeometry, legMaterial)
-    leg4.position.set(pos.x + 3.5, 2, pos.z + 1.5)
-    scene.add(leg4)
+    scene.add(createBox(0.5, 3, 0.5, COLORS.desk, pos.x - 2, 1.5, pos.z - 1))
+    scene.add(createBox(0.5, 3, 0.5, COLORS.desk, pos.x + 2, 1.5, pos.z - 1))
+    scene.add(createBox(0.5, 3, 0.5, COLORS.desk, pos.x - 2, 1.5, pos.z + 1))
+    scene.add(createBox(0.5, 3, 0.5, COLORS.desk, pos.x + 2, 1.5, pos.z + 1))
+
+    // 桌面
+    scene.add(createBox(5, 0.4, 3, COLORS.deskTop, pos.x, 3.2, pos.z))
 
     // 显示器
-    const monitorGeometry = new THREE.BoxGeometry(3, 2, 0.3)
-    const monitorMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 })
-    const monitor = new THREE.Mesh(monitorGeometry, monitorMaterial)
-    monitor.position.set(pos.x, 5.5, pos.z)
-    scene.add(monitor)
-
-    // 屏幕
-    const screenGeometry = new THREE.PlaneGeometry(2.5, 1.5)
-    const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0066CC })
-    const screen = new THREE.Mesh(screenGeometry, screenMaterial)
-    screen.position.set(pos.x, 5.5, pos.z + 0.2)
+    const screen = createBox(2.5, 1.8, 0.2, COLORS.screen, pos.x, 4.5, pos.z - 1.3)
     scene.add(screen)
 
-    // 键盘
-    const keyboardGeometry = new THREE.BoxGeometry(2.5, 0.2, 1)
-    const keyboardMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 })
-    const keyboard = new THREE.Mesh(keyboardGeometry, keyboardMaterial)
-    keyboard.position.set(pos.x, 4.3, pos.z + 1.5)
-    scene.add(keyboard)
+    // 屏幕内容
+    const screenContent = createBox(2, 1.4, 0.1, COLORS.screen, pos.x, 4.5, pos.z - 1.15)
+    scene.add(screenContent)
 
-    desks.push({ x: pos.x, z: pos.z, index })
+    // 键盘
+    scene.add(createBox(1.8, 0.2, 0.8, 0x424242, pos.x, 3.5, pos.z + 0.5))
+
+    // 椅子
+    const chairSeat = createBox(1.5, 0.3, 1.5, COLORS.chair, pos.x, 1.5, pos.z + 2)
+    scene.add(chairSeat)
+    const chairBack = createBox(1.5, 2, 0.3, COLORS.chair, pos.x, 2.5, pos.z + 2.7)
+    scene.add(chairBack)
+  })
+}
+
+function createCharacters() {
+  const positions = [
+    { x: -10, z: 5 },
+    { x: 0, z: 5 },
+    { x: 10, z: 5 }
+  ]
+
+  positions.forEach((pos, i) => {
+    const group = new THREE.Group()
+
+    // 身体 - 简约方块
+    const body = createBox(1.2, 2, 0.8, COLORS.character[i], 0, 2.5, 0)
+    group.add(body)
+
+    // 头 - 方块
+    const head = createBox(1, 1, 1, 0xFFE4C4, 0, 4.2, 0)
+    group.add(head)
+
+    // 眼睛 - 两个小点
+    const eye1 = createBox(0.15, 0.15, 0.1, 0x333333, -0.25, 4.3, 0.5)
+    group.add(eye1)
+    const eye2 = createBox(0.15, 0.15, 0.1, 0x333333, 0.25, 4.3, 0.5)
+    group.add(eye2)
+
+    // 嘴巴
+    const mouth = createBox(0.3, 0.1, 0.1, 0xFF6B6B, 0, 3.9, 0.5)
+    group.add(mouth)
+
+    // 光环
+    const haloGeo = new THREE.TorusGeometry(0.8, 0.1, 8, 32)
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0xFFD700 })
+    const halo = new THREE.Mesh(haloGeo, haloMat)
+    halo.position.y = 5.3
+    halo.rotation.x = Math.PI / 2
+    halo.visible = false
+    group.add(halo)
+
+    group.position.set(pos.x, 0, pos.z)
+    group.userData = {
+      halo,
+      baseZ: pos.z,
+      walkZ: pos.z + 3,
+      isWorking: false,
+      index: i
+    }
+
+    scene.add(group)
+    characters.push(group)
   })
 }
 
 function createDecorations() {
   // 树
   const treePositions = [
-    { x: -30, z: -15 },
-    { x: 30, z: -15 },
-    { x: -25, z: -22 }
+    { x: -20, z: -5 },
+    { x: 20, z: -5 },
+    { x: -25, z: 8 },
+    { x: 25, z: 8 }
   ]
-  
+
   treePositions.forEach(pos => {
-    // 树干
-    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.8, 4, 8)
-    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial)
-    trunk.position.set(pos.x, 2, pos.z)
+    const trunk = createBox(0.8, 3, 0.8, COLORS.trunk, pos.x, 1.5, pos.z)
     scene.add(trunk)
 
-    // 树叶
-    const foliageGeometry = new THREE.SphereGeometry(2.5, 8, 8)
-    const foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 })
-    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial)
-    foliage.position.set(pos.x, 5.5, pos.z)
-    scene.add(foliage)
+    // 树叶 - 3层方块
+    scene.add(createBox(2.5, 2, 2.5, COLORS.tree, pos.x, 3.5, pos.z))
+    scene.add(createBox(2, 2, 2, COLORS.tree, pos.x, 5, pos.z))
+    scene.add(createBox(1.5, 1.5, 1.5, COLORS.tree, pos.x, 6.2, pos.z))
   })
 
   // 打印机
-  const printerGeometry = new THREE.BoxGeometry(2, 1.5, 2)
-  const printerMaterial = new THREE.MeshStandardMaterial({ color: 0xCCCCCC })
-  const printer = new THREE.Mesh(printerGeometry, printerMaterial)
-  printer.position.set(25, 0.75, 5)
-  scene.add(printer)
+  scene.add(createBox(1.5, 1.2, 1.5, 0xBDBDBD, 18, 0.6, 2))
 
-  // 会议室
-  const meetingGeometry = new THREE.BoxGeometry(8, 4, 6)
-  const meetingMaterial = new THREE.MeshStandardMaterial({ color: 0xADD8E6, transparent: true, opacity: 0.5 })
-  const meeting = new THREE.Mesh(meetingGeometry, meetingMaterial)
-  meeting.position.set(25, 2, -5)
+  // 会议室（透明方块）
+  const meeting = createBox(8, 4, 6, 0xE3F2FD, 18, 2, -5)
+  meeting.material.transparent = true
+  meeting.material.opacity = 0.6
   scene.add(meeting)
-}
 
-function createCharacters() {
-  const colors = [0x4A90D9, 0xFF6B9D, 0x5CB85C]
-  
-  desks.forEach((desk, index) => {
-    const group = new THREE.Group()
-    
-    // 身体
-    const bodyGeometry = new THREE.CapsuleGeometry(0.8, 2, 4, 8)
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: colors[index] })
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial)
-    body.position.y = 2.5
-    group.add(body)
-
-    // 头
-    const headGeometry = new THREE.SphereGeometry(0.8, 16, 16)
-    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xFFE4C4 })
-    const head = new THREE.Mesh(headGeometry, headMaterial)
-    head.position.y = 4.5
-    group.add(head)
-
-    // 眼睛
-    const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8)
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 })
-    const eye1 = new THREE.Mesh(eyeGeometry, eyeMaterial)
-    eye1.position.set(-0.25, 4.6, 0.7)
-    group.add(eye1)
-    const eye2 = new THREE.Mesh(eyeGeometry, eyeMaterial)
-    eye2.position.set(0.25, 4.6, 0.7)
-    group.add(eye2)
-
-    // 光环
-    const haloGeometry = new THREE.TorusGeometry(1, 0.1, 8, 32)
-    const haloMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700, emissive: 0xFFD700, emissiveIntensity: 0.5 })
-    const halo = new THREE.Mesh(haloGeometry, haloMaterial)
-    halo.position.y = 5.8
-    halo.rotation.x = Math.PI / 2
-    halo.visible = false
-    group.add(halo)
-
-    group.position.set(desk.x, 0, desk.z - 3)
-    group.userData = { 
-      index, 
-      deskX: desk.x, 
-      deskZ: desk.z - 3,
-      walkingZ: desk.z - 8,
-      isWorking: false,
-      halo
-    }
-    
-    scene.add(group)
-    characters.push(group)
-  })
+  // 老板屋
+  const boss = createBox(10, 5, 8, 0xFFF9C4, -20, 2.5, -12)
+  scene.add(boss)
+  const bossRoof = createBox(11, 0.5, 9, 0xFFD54F, -20, 5.25, -12)
+  scene.add(bossRoof)
 }
 
 function updateCharacters() {
   const time = Date.now() * 0.001
 
-  characters.forEach((char, index) => {
-    const role = roles.value[index]
+  characters.forEach((char, i) => {
+    const role = roles.value[i]
     const isWorking = role?.status === 'working'
     char.userData.isWorking = isWorking
-
-    // 显示/隐藏光环
     char.userData.halo.visible = isWorking
-    
-    // 动画
+
     if (isWorking) {
-      // 工作状态：轻微晃动
-      char.position.y = Math.sin(time * 3) * 0.1
-      char.rotation.z = Math.sin(time * 2) * 0.05
-      // 走动
-      char.position.z = char.userData.walkingZ + Math.sin(time * 0.5) * 2
+      // 工作：轻微弹跳 + 走动
+      char.position.y = Math.sin(time * 4 + i) * 0.1
+      char.position.z = char.userData.walkZ + Math.sin(time * 0.8) * 1.5
     } else {
-      // 空闲：呼吸动画
-      char.scale.setScalar(1 + Math.sin(time) * 0.02)
-      char.position.z = char.userData.deskZ
-      char.rotation.z = 0
+      // 空闲：呼吸
+      char.scale.setScalar(1 + Math.sin(time + i) * 0.03)
+      char.position.z = char.userData.baseZ
+    }
+
+    // 光环旋转
+    if (char.userData.halo.visible) {
+      char.userData.halo.rotation.z += 0.02
     }
   })
 }
@@ -356,7 +340,12 @@ function animate() {
 }
 
 function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight
+  const aspect = window.innerWidth / window.innerHeight
+  const d = 25
+  camera.left = -d * aspect
+  camera.right = d * aspect
+  camera.top = d
+  camera.bottom = -d
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
@@ -404,7 +393,6 @@ onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
   if (dataTimer) clearInterval(dataTimer)
   window.removeEventListener('resize', onWindowResize)
-  if (renderer) renderer.dispose()
 })
 </script>
 
@@ -419,10 +407,10 @@ body { overflow: hidden; font-family: 'Microsoft YaHei', sans-serif; }
   position: absolute;
   top: 15px;
   right: 15px;
-  width: 220px;
+  width: 200px;
   background: rgba(255,255,255,0.95);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   z-index: 100;
   overflow: hidden;
 }
@@ -441,45 +429,54 @@ body { overflow: hidden; font-family: 'Microsoft YaHei', sans-serif; }
 .live-dot { width: 6px; height: 6px; background: #5CB85C; border-radius: 50%; animation: pulse 1s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-.panel-content { max-height: 280px; overflow-y: auto; }
-.section { padding: 10px 12px; border-bottom: 1px solid #eee; }
+.panel-content { max-height: 250px; overflow-y: auto; }
+.section { padding: 8px 10px; border-bottom: 1px solid #eee; }
 .section:last-child { border-bottom: none; }
-.section-title { font-size: 11px; color: #666; margin-bottom: 8px; font-weight: bold; }
+.section-title { font-size: 10px; color: #666; margin-bottom: 6px; font-weight: bold; }
 
-.role-cards { display: flex; flex-direction: column; gap: 5px; }
-.role-card { display: flex; align-items: center; gap: 6px; padding: 6px; background: #f9f9f9; border-radius: 6px; }
-.role-card.working { background: #e6ffe6; }
+.role-cards { display: flex; flex-direction: column; gap: 4px; }
+.role-card { display: flex; align-items: center; gap: 5px; padding: 5px; background: #f9f9f9; border-radius: 6px; }
+.role-card.working { background: #E8F5E9; }
 .avatar { font-size: 14px; }
 .info { flex: 1; display: flex; flex-direction: column; }
-.info .name { font-size: 11px; font-weight: bold; }
-.info .task, .info .status-text { font-size: 9px; color: #666; }
-.info .task { color: #5CB85C; }
+.info .name { font-size: 10px; font-weight: bold; }
+.info .task, .info .status-text { font-size: 8px; color: #666; }
+.info .task { color: #4CAF50; }
 
-.task-list { display: flex; flex-direction: column; gap: 4px; }
-.task-item { display: flex; justify-content: space-between; font-size: 10px; }
-.schedule { color: #999; font-size: 9px; }
+.task-list { display: flex; flex-direction: column; gap: 3px; }
+.task-item { display: flex; justify-content: space-between; font-size: 9px; }
+.schedule { color: #999; font-size: 8px; }
 
 .skill-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-.skill-tag { font-size: 9px; padding: 2px 5px; background: #f0f0f0; border-radius: 6px; color: #666; }
+.skill-tag { font-size: 8px; padding: 2px 5px; background: #f5f5f5; border-radius: 6px; color: #666; }
 
-.panel-footer { display: flex; justify-content: space-between; padding: 8px 12px; background: #f5f5f5; font-size: 9px; color: #999; }
+.panel-footer { display: flex; justify-content: space-between; padding: 6px 10px; background: #f5f5f5; font-size: 8px; color: #999; }
 
 .status-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 35px;
-  background: rgba(0,0,0,0.8);
+  height: 30px;
+  background: rgba(255,255,255,0.9);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  color: #fff;
-  font-size: 12px;
+  padding: 0 15px;
+  color: #333;
+  font-size: 11px;
   z-index: 100;
 }
 
-.status-bar .dot { width: 6px; height: 6px; border-radius: 50%; background: #999; margin-right: 5px; }
-.status-bar .active .dot { background: #5CB85C; animation: pulse 1s infinite; }
+.status-bar .dot { 
+  display: inline-block; 
+  width: 6px; height: 6px; 
+  border-radius: 50%; 
+  background: #999; 
+  margin-right: 5px; 
+}
+.status-bar span:last-child .dot { 
+  background: #5CB85C; 
+  animation: pulse 1s infinite; 
+}
 </style>
