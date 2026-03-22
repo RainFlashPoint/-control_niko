@@ -8,6 +8,16 @@
       <div class="panel-title">🐉 龙虾状态</div>
       <div class="status-list">
         <div class="status-item">
+          <span class="status-icon">🧑‍💼</span>
+          <span class="status-label">大总管</span>
+          <span class="status-value">在线</span>
+        </div>
+        <div class="status-item">
+          <span class="status-icon">📊</span>
+          <span class="status-label">市场调研员</span>
+          <span class="status-value">在线</span>
+        </div>
+        <div class="status-item">
           <span class="status-icon">🤖</span>
           <span class="status-label">模型</span>
           <span class="status-value">MiniMax-M2.5</span>
@@ -27,16 +37,6 @@
           <span class="status-label">Token消耗</span>
           <span class="status-value">45.2K</span>
         </div>
-        <div class="status-item">
-          <span class="status-icon">🎯</span>
-          <span class="status-label">技能</span>
-          <span class="status-value">9 个</span>
-        </div>
-        <div class="status-item">
-          <span class="status-icon">⏰</span>
-          <span class="status-label">定时任务</span>
-          <span class="status-value">3 个</span>
-        </div>
       </div>
     </div>
     
@@ -44,9 +44,10 @@
       <div class="ui-section notes">
         <div class="section-title">📝 昨日小记</div>
         <div class="notes-content">
-          <p>• 助手A 完成代码审查</p>
-          <p>• 助手B 处理用户请求</p>
-          <p>• 系统运行稳定</p>
+          <p>• 完成API文档更新和PDF生成</p>
+          <p>• 部署niko1到Cloudflare Workers</p>
+          <p>• 优化3D办公室角色显示效果</p>
+          <p>• 像素角色风格调整测试</p>
         </div>
       </div>
       
