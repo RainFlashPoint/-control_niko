@@ -154,7 +154,7 @@ function drawPixel(x, y, color, size = PIXEL_SIZE) {
 
 function drawRect(x, y, w, h, color) {
   ctx.fillStyle = color
-  ctx.fillRect(x * size, y * size, w * size, h * size)
+  ctx.fillRect(x * PIXEL_SIZE, y * PIXEL_SIZE, w * PIXEL_SIZE, h * PIXEL_SIZE)
 }
 
 // 绘制高清RPG角色
