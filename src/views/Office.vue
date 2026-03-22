@@ -11,6 +11,8 @@
           <div class="window-pane"></div>
         </div>
       </div>
+      
+      <!-- 工位 -->
       <div class="desk desk-1">
         <div class="desk-top"></div>
         <div class="desk-leg"></div>
@@ -24,7 +26,9 @@
           </div>
           <div class="keyboard"></div>
         </div>
+        <div class="desk-name">工位 1</div>
       </div>
+      
       <div class="desk desk-2">
         <div class="desk-top"></div>
         <div class="desk-leg"></div>
@@ -38,7 +42,9 @@
           </div>
           <div class="keyboard"></div>
         </div>
+        <div class="desk-name">工位 2</div>
       </div>
+      
       <div class="desk desk-3">
         <div class="desk-top"></div>
         <div class="desk-leg"></div>
@@ -52,11 +58,16 @@
           </div>
           <div class="keyboard"></div>
         </div>
+        <div class="desk-name">工位 3</div>
       </div>
+      
+      <!-- 装饰 -->
       <div class="plant plant-1">🌿</div>
       <div class="plant plant-2">🌵</div>
-      <div class="clock">🕐</div>
-      <div class="calendar">📅</div>
+      <div class="clock">🕐 {{ currentTime }}</div>
+      <div class="calendar">📅 {{ currentDate }}</div>
+      <div class="coffee-machine">☕</div>
+      <div class="printer">🖨️</div>
     </div>
 
     <!-- 动漫角色 -->
@@ -72,7 +83,7 @@
           <span class="avatar">{{ role.avatar }}</span>
         </div>
         <div class="character-torso">
-          <div class="character-shirt" :class="getShirtColor(index)"></div>
+          <div class="character-shirt" :class="role.shirtColor || 'shirt-blue'"></div>
         </div>
         <div class="character-legs">
           <div class="leg left" :class="{ walking: role.location === 'walking' }"></div>
@@ -98,7 +109,7 @@
       </div>
       
       <div class="panel-section">
-        <div class="section-title">📊 角色状态</div>
+        <div class="section-title">📊 角色状态 ({{ activeCount }}/{{ roles.length }})</div>
         <div class="role-list">
           <div v-for="role in roles" :key="role.id" class="role-item">
             <span class="role-avatar">{{ role.avatar }}</span>
@@ -111,17 +122,17 @@
       </div>
 
       <div class="panel-section">
-        <div class="section-title">⏰ 定时任务</div>
+        <div class="section-title">⏰ 定时任务 ({{ cronJobs.length }})</div>
         <div class="task-list">
-          <div v-for="task in cronJobs" :key="task.name" class="task-item">
+          <div v-for="task in cronJobs.slice(0, 5)" :key="task.id" class="task-item">
             <span class="task-name">{{ task.name }}</span>
-            <span :class="['task-status', task.status]">{{ task.schedule }}</span>
+            <span :class="['task-status', task.enabled ? 'active' : 'paused']">{{ task.schedule }}</span>
           </div>
         </div>
       </div>
 
       <div class="panel-section">
-        <div class="section-title">🛠️ 技能</div>
+        <div class="section-title">🛠️ 技能 ({{ skills.length }})</div>
         <div class="skill-list">
           <span v-for="skill in skills" :key="skill.name" class="skill-tag">
             {{ skill.name }}
@@ -130,10 +141,11 @@
       </div>
 
       <div class="panel-section">
-        <div class="section-title">💻 系统</div>
+        <div class="section-title">💻 系统信息</div>
         <div class="system-info">
-          <div>主机: {{ systemInfo.hostname }}</div>
-          <div>运行: {{ systemInfo.uptime }}</div>
+          <div>🖥️ 主机: {{ systemInfo.hostname }}</div>
+          <div>⏱️ 运行: {{ systemInfo.uptime }}</div>
+          <div>💾 内存: {{ systemInfo.memory }}</div>
         </div>
       </div>
     </div>
@@ -143,6 +155,10 @@
       <div class="status-item">
         <span class="dot" :class="{ active: isAnyWorking }"></span>
         {{ activeCount }}/{{ roles.length }} 工作中
+      </div>
+      <div class="status-item">
+        <span class="dot pulse"></span>
+        实时同步中
       </div>
     </div>
   </div>
@@ -154,21 +170,22 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 const roles = ref([])
 const cronJobs = ref([])
 const skills = ref([])
-const systemInfo = ref({ hostname: '-', uptime: '0s' })
+const systemInfo = ref({ hostname: '-', uptime: '0s', memory: '-' })
 const currentTime = ref('')
+const currentDate = ref('')
 let timer = null
 
 // 角色位置配置
 const deskPositions = [
-  { x: 15, y: 45 },
-  { x: 45, y: 45 },
-  { x: 75, y: 45 }
+  { x: 10, y: 50 },
+  { x: 43, y: 50 },
+  { x: 76, y: 50 }
 ]
 
 const walkingPositions = [
-  { x: 30, y: 30 },
-  { x: 50, y: 25 },
-  { x: 70, y: 30 }
+  { x: 20, y: 35 },
+  { x: 50, y: 30 },
+  { x: 80, y: 35 }
 ]
 
 function getCharacterStyle(index) {
@@ -179,11 +196,6 @@ function getCharacterStyle(index) {
     left: `${pos.x}%`,
     top: `${pos.y}%`
   }
-}
-
-function getShirtColor(index) {
-  const colors = ['shirt-blue', 'shirt-pink', 'shirt-green']
-  return colors[index % colors.length]
 }
 
 function isWorking(index) {
@@ -200,38 +212,26 @@ const isAnyWorking = computed(() => activeCount.value > 0)
 
 function updateTime() {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  currentTime.value = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  currentDate.value = now.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 }
 
 async function fetchData() {
   try {
     const [rolesRes, statusRes] = await Promise.all([
-      fetch('http://localhost:3001/api/roles').then(r => r.json()),
-      fetch('http://localhost:3001/api/status').then(r => r.json())
+      fetch('http://localhost:3001/api/roles').then(r => r.json()).catch(() => ({ code: 0, data: [] })),
+      fetch('http://localhost:3001/api/status').then(r => r.json()).catch(() => ({ code: 0, data: {} }))
     ])
     
     if (rolesRes.code === 0) roles.value = rolesRes.data
     if (statusRes.code === 0) {
       cronJobs.value = statusRes.data.cronJobs || []
       skills.value = statusRes.data.skills || []
-    }
-    
-    const sysRes = await fetch('http://localhost:3001/api/system').then(r => r.json())
-    if (sysRes.code === 0) {
-      systemInfo.value = {
-        hostname: sysRes.data.hostname,
-        uptime: formatUptime(sysRes.data.uptime)
-      }
+      systemInfo.value = statusRes.data.systemInfo || {}
     }
   } catch (e) {
     console.error('获取数据失败:', e)
   }
-}
-
-function formatUptime(seconds) {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  return `${h}h ${m}m`
 }
 
 onMounted(() => {
@@ -296,18 +296,18 @@ body {
 
 .window {
   position: absolute;
-  top: 8%;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  width: 300px;
-  height: 180px;
+  width: 280px;
+  height: 160px;
 }
 
 .window-frame {
   width: 100%;
   height: 100%;
   background: #fff;
-  border: 8px solid #8B4513;
+  border: 10px solid #8B4513;
   display: grid;
   grid-template-rows: 1fr 1fr;
   gap: 4px;
@@ -321,47 +321,57 @@ body {
 /* 桌子 */
 .desk {
   position: absolute;
-  top: 40%;
-  width: 180px;
-  height: 100px;
+  top: 42%;
+  width: 160px;
+  height: 90px;
 }
 
-.desk-1 { left: 5%; }
+.desk-1 { left: 3%; }
 .desk-2 { left: 38%; }
-.desk-3 { left: 71%; }
+.desk-3 { left: 73%; }
+
+.desk-name {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #8B4513;
+  font-weight: bold;
+}
 
 .desk-top {
   width: 100%;
-  height: 15px;
+  height: 12px;
   background: linear-gradient(180deg, #DEB887 0%, #D2B48C 100%);
   border-radius: 3px;
   box-shadow: 0 3px 6px rgba(0,0,0,0.2);
 }
 
 .desk-leg {
-  width: 10px;
-  height: 60px;
+  width: 8px;
+  height: 55px;
   background: #8B4513;
   position: absolute;
-  top: 15px;
+  top: 12px;
 }
 
-.desk-leg:first-of-type { left: 15px; }
-.desk-leg:last-of-type { right: 15px; }
+.desk-leg:first-of-type { left: 12px; }
+.desk-leg:last-of-type { right: 12px; }
 
 /* 电脑 */
 .computer {
   position: absolute;
-  top: -50px;
-  left: 30px;
+  top: -45px;
+  left: 25px;
 }
 
 .monitor {
-  width: 80px;
-  height: 60px;
+  width: 70px;
+  height: 52px;
   background: #333;
   border-radius: 5px;
-  padding: 5px;
+  padding: 4px;
 }
 
 .screen {
@@ -388,42 +398,58 @@ body {
 }
 
 .stand {
-  width: 20px;
-  height: 8px;
+  width: 16px;
+  height: 6px;
   background: #666;
   margin: 0 auto;
 }
 
 .keyboard {
-  width: 70px;
-  height: 8px;
+  width: 60px;
+  height: 6px;
   background: #444;
   border-radius: 2px;
-  margin-top: 3px;
+  margin-top: 2px;
   margin-left: 5px;
 }
 
 /* 装饰 */
 .plant {
   position: absolute;
-  font-size: 40px;
+  font-size: 36px;
 }
 
-.plant-1 { top: 35%; left: 28%; }
-.plant-2 { top: 35%; right: 5%; }
+.plant-1 { top: 38%; left: 25%; }
+.plant-2 { top: 38%; right: 3%; }
 
 .clock {
   position: absolute;
-  top: 5%;
-  right: 10%;
-  font-size: 30px;
+  top: 3%;
+  right: 8%;
+  font-size: 24px;
+  color: #333;
 }
 
 .calendar {
   position: absolute;
-  top: 15%;
-  right: 10%;
-  font-size: 25px;
+  top: 12%;
+  right: 8%;
+  font-size: 20px;
+  color: #333;
+}
+
+.coffee-machine {
+  position: absolute;
+  top: 42%;
+  right: 12%;
+  font-size: 28px;
+}
+
+.printer {
+  position: absolute;
+  top: 35%;
+  right: 25%;
+  font-size: 28px;
 }
 
 /* 角色 */
@@ -452,8 +478,8 @@ body {
 }
 
 .character-head {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: #FFE4C4;
   border-radius: 50%;
   display: flex;
@@ -463,13 +489,13 @@ body {
 }
 
 .avatar {
-  font-size: 24px;
+  font-size: 22px;
 }
 
 .character-torso {
-  width: 30px;
-  height: 35px;
-  margin-top: -5px;
+  width: 26px;
+  height: 30px;
+  margin-top: -4px;
 }
 
 .character-shirt {
@@ -484,13 +510,13 @@ body {
 
 .character-legs {
   display: flex;
-  gap: 5px;
-  margin-top: -3px;
+  gap: 4px;
+  margin-top: -2px;
 }
 
 .leg {
-  width: 10px;
-  height: 25px;
+  width: 9px;
+  height: 22px;
   background: #333;
   border-radius: 0 0 3px 3px;
 }
@@ -505,21 +531,21 @@ body {
 }
 
 .character-name {
-  font-size: 12px;
+  font-size: 11px;
   color: #333;
   font-weight: bold;
-  margin-top: 5px;
+  margin-top: 4px;
   text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
 }
 
 .character-status {
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .status-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 8px;
   color: #fff;
 }
 
@@ -529,11 +555,11 @@ body {
 
 .speech-bubble {
   position: absolute;
-  top: -30px;
+  top: -28px;
   background: #fff;
-  padding: 3px 8px;
-  border-radius: 10px;
-  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 9px;
   white-space: nowrap;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -541,10 +567,10 @@ body {
 .speech-bubble::after {
   content: '';
   position: absolute;
-  bottom: -5px;
+  bottom: -4px;
   left: 50%;
   transform: translateX(-50%);
-  border-width: 5px 5px 0;
+  border-width: 4px 4px 0;
   border-style: solid;
   border-color: #fff transparent transparent;
 }
@@ -552,14 +578,14 @@ body {
 /* 信息面板 */
 .info-panel {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 280px;
+  top: 15px;
+  right: 15px;
+  width: 260px;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   z-index: 100;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 50px);
   overflow-y: auto;
 }
 
@@ -567,7 +593,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
+  padding: 12px 15px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
   border-radius: 12px 12px 0 0;
@@ -575,16 +601,16 @@ body {
 
 .panel-title {
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .time {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.9;
 }
 
 .panel-section {
-  padding: 12px 15px;
+  padding: 10px 12px;
   border-bottom: 1px solid #eee;
 }
 
@@ -593,7 +619,7 @@ body {
 }
 
 .section-title {
-  font-size: 12px;
+  font-size: 11px;
   color: #666;
   margin-bottom: 8px;
   font-weight: bold;
@@ -602,18 +628,18 @@ body {
 .role-list, .task-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .role-item, .task-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
 }
 
 .role-avatar {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .role-name {
@@ -621,9 +647,9 @@ body {
 }
 
 .role-status, .task-status {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 8px;
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 6px;
 }
 
 .role-status.idle, .task-status.paused {
@@ -644,19 +670,19 @@ body {
 .skill-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 }
 
 .skill-tag {
-  font-size: 10px;
-  padding: 3px 8px;
+  font-size: 9px;
+  padding: 2px 6px;
   background: #f0f0f0;
-  border-radius: 10px;
+  border-radius: 8px;
   color: #666;
 }
 
 .system-info {
-  font-size: 11px;
+  font-size: 10px;
   color: #666;
   display: flex;
   flex-direction: column;
@@ -666,28 +692,28 @@ body {
 /* 状态栏 */
 .status-bar {
   position: absolute;
-  bottom: 20px;
+  bottom: 15px;
   left: 50%;
   transform: translateX(-50%);
   background: rgba(255, 255, 255, 0.9);
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 20px;
   display: flex;
-  gap: 20px;
+  gap: 16px;
   z-index: 100;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
   color: #666;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #999;
 }
@@ -697,8 +723,13 @@ body {
   animation: pulse 1s infinite;
 }
 
+.dot.pulse {
+  background: #5CB85C;
+  animation: pulse 1.5s infinite;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.4; }
 }
 </style>
