@@ -454,8 +454,12 @@ function handleResize() {
   canvas.width = container.clientWidth
   canvas.height = container.clientHeight
   
-  scale = Math.min(canvas.width / 100, canvas.height / 45)
-  scale = Math.max(1.5, Math.min(scale, 8))
+  // 根据画布尺寸计算缩放，让内容完整显示
+  const baseWidth = 100
+  const baseHeight = 40
+  scale = Math.min(canvas.width / baseWidth, canvas.height / baseHeight)
+  // 限制缩放范围，确保画面大小合适
+  scale = Math.max(2, Math.min(scale, 10))
 }
 
 onMounted(() => {
