@@ -103,61 +103,60 @@ const FPS = 6
 const frameTime = 1000 / FPS
 
 let frame = 0
-let W = 100
-let H = 60
 
 function drawRect(x, y, w, h, color) {
   ctx.fillStyle = color
-  const sx = (x / W) * canvas.width
-  const sy = (y / H) * canvas.height
-  const sw = (w / W) * canvas.width
-  const sh = (h / H) * canvas.height
-  ctx.fillRect(sx, sy, sw, sh)
+  ctx.fillRect(x, y, w, h)
 }
 
-function drawText(text, x, y, color, size = 2) {
+function drawText(text, x, y, color, size = 12) {
   ctx.fillStyle = color
-  const fontSize = (size / W) * canvas.width * 0.9
-  ctx.font = `${fontSize}px monospace`
-  const sx = (x / W) * canvas.width
-  const sy = (y / H) * canvas.height
-  ctx.fillText(text, sx, sy)
+  ctx.font = `${size}px monospace`
+  ctx.fillText(text, x, y)
 }
 
 function drawScene() {
+  const w = canvas.width
+  const h = canvas.height
   const blink = frame % 8 < 4
-  const bounce = Math.floor(frame / 4) % 2 === 0 ? 0 : -0.3
+  const bounce = Math.floor(frame / 4) % 2 === 0 ? 0 : -2
+  
+  // 缩放比例
+  const scale = Math.min(w / 100, h / 60)
+  const offsetX = (w - 100 * scale) / 2
+  const offsetY = (h - 60 * scale) / 2
+  
+  ctx.save()
+  ctx.translate(offsetX, offsetY)
+  ctx.scale(scale, scale)
   
   // 地板
-  for (let i = 0; i < W; i += 2) {
-    for (let j = 25; j < H; j += 2) {
+  for (let i = 0; i < 100; i += 2) {
+    for (let j = 25; j < 60; j += 2) {
       drawRect(i, j, 2, 2, ((i + j) / 2) % 2 === 0 ? '#D4A574' : '#C49A6C')
     }
   }
   
   // 墙壁
-  for (let i = 0; i < W; i += 2) {
+  for (let i = 0; i < 100; i += 2) {
     for (let j = 0; j < 25; j += 2) {
       drawRect(i, j, 2, 2, '#F5E6C8')
     }
   }
   
   // 墙裙
-  drawRect(0, 22, W, 3, '#8B6914')
+  drawRect(0, 22, 100, 3, '#8B6914')
   
-  // ===== 房间分隔墙（明显一点）=====
-  // 左侧墙
-  drawRect(W * 0.33 - 1, 0, 3, 22, '#8B7355')
-  drawRect(W * 0.33 - 0.5, 0, 1, 22, '#6B5344')
-  // 右侧墙
-  drawRect(W * 0.66 - 1, 0, 3, 22, '#8B7355')
-  drawRect(W * 0.66 - 0.5, 0, 1, 22, '#6B5344')
+  // 房间分隔墙
+  drawRect(33 - 1, 0, 3, 22, '#8B7355')
+  drawRect(33 - 0.5, 0, 1, 22, '#6B5344')
+  drawRect(66 - 1, 0, 3, 22, '#8B7355')
+  drawRect(66 - 0.5, 0, 1, 22, '#6B5344')
   
   // ===== 左侧房间：办公区 =====
-  // E.T.海报
   drawRect(2, 3, 10, 10, '#1E3A5F')
   drawRect(5, 5, 4, 3, '#000000')
-  drawText('E.T.', 4, 12, '#FFFFFF', 3)
+  drawText('E.T.', 4, 14, '#FFFFFF', 4)
   
   // 办公桌
   drawRect(3, 35, 18, 3, '#8B4513')
@@ -179,55 +178,48 @@ function drawScene() {
   drawRect(8, 32, 5, 3, '#5D4037')
   drawRect(9, 30, 3, 2, '#5D4037')
   
-  // 紫色怪物（精细一点）
+  // 紫色怪物（更精细）
   drawRect(6 + bounce, 33, 6, 5, '#9B59B6')
-  // 角
   drawRect(7 + bounce, 31, 1, 2, '#9B59B6')
   drawRect(10 + bounce, 31, 1, 2, '#9B59B6')
   drawRect(8 + bounce, 30, 2, 2, '#F1C40F')
-  // 钳子手臂
   drawRect(5 + bounce, 34, 2, 1, '#E74C3C')
   drawRect(11 + bounce, 34, 2, 1, '#E74C3C')
-  // 眼睛
-  drawRect(7 + bounce, 34, 1, 1, '#FFFFFF')
-  drawRect(10 + bounce, 34, 1, 1, '#FFFFFF')
-  drawRect(7.2 + bounce, 34.2, 0.6, 0.6, '#000000')
-  drawRect(10.2 + bounce, 34.2, 0.6, 0.6, '#000000')
-  // 汗珠
+  drawRect(7 + bounce, 34, 1.2, 1.2, '#FFFFFF')
+  drawRect(10 + bounce, 34, 1.2, 1.2, '#FFFFFF')
+  drawRect(7.3 + bounce, 34.3, 0.6, 0.6, '#000000')
+  drawRect(10.3 + bounce, 34.3, 0.6, 0.6, '#000000')
   if (blink) {
     drawRect(5 + bounce, 33, 1, 1, '#3498DB')
     drawRect(12 + bounce, 33, 1, 1, '#3498DB')
   }
   
-  // 绿色恐龙（精细一点）
+  // 绿色恐龙（更精细）
   drawRect(8, 42, 5, 4, '#2ECC71')
   drawRect(7, 41, 3, 2, '#2ECC71')
   drawRect(6, 42, 1, 2, '#2ECC71')
   drawRect(12, 42, 1, 2, '#2ECC71')
-  // 眼睛
-  drawRect(8, 42, 1, 1, '#000000')
-  drawRect(11, 42, 1, 1, '#000000')
-  // 嘴巴
-  drawRect(9, 44, 2, 0.5, '#27AE60')
+  drawRect(8, 42, 1.2, 1.2, '#000000')
+  drawRect(11, 42, 1.2, 1.2, '#000000')
+  drawRect(9, 44, 2, 0.8, '#27AE60')
   
-  // 对话气泡 - 只显示"待命中"
-  drawRect(4, 37, 12, 5, '#FFFFFF')
+  // 对话气泡 - 修复文字
+  drawRect(4, 36, 14, 6, '#FFFFFF')
   drawRect(4, 42, 3, 1, '#FFFFFF')
-  drawText('待命中', 5, 40, '#000000', 2.5)
+  drawText('IDLE', 6, 41, '#000000', 5)
   
   // 猫窝+猫
   drawRect(2, 45, 6, 3, '#A0A0A0')
   drawRect(3, 44, 4, 2, '#FF8C00')
-  // 眼睛
-  drawRect(3.5, 44.5, 0.5, 0.5, '#000000')
-  drawRect(5.5, 44.5, 0.5, 0.5, '#000000')
+  drawRect(3.5, 44.5, 0.8, 0.8, '#000000')
+  drawRect(5.5, 44.5, 0.8, 0.8, '#000000')
   
   // 幽灵
   drawRect(22, 45, 4, 5, '#90EE90')
   drawRect(23, 44, 2, 1, '#90EE90')
   drawRect(21, 46, 1, 2, '#90EE90')
   drawRect(26, 46, 1, 2, '#90EE90')
-  drawRect(22, 46, 0.8, 0.8, '#000000')
+  drawRect(22.5, 46, 0.8, 0.8, '#000000')
   drawRect(25, 46, 0.8, 0.8, '#000000')
   
   // 花盆+多肉
@@ -245,105 +237,101 @@ function drawScene() {
   drawRect(35, 29, 3, 1, '#FFFF00')
   
   // ===== 中间房间：休闲区 =====
-  // 老友记挂毯
-  drawRect(W * 0.38, 3, 15, 8, '#228B22')
-  drawText('HOW YOU', W * 0.39, 6, '#FFFFFF', 2)
-  drawText("DOIN'", W * 0.4, 8, '#FFFFFF', 2)
-  drawText('FRIENDS', W * 0.4, 10, '#FFFFFF', 2)
+  drawRect(38, 3, 15, 8, '#228B22')
+  drawText('HOW YOU', 39, 7, '#FFFFFF', 3)
+  drawText("DOIN'", 40, 10, '#FFFFFF', 3)
+  drawText('FRIENDS', 41, 13, '#FFFFFF', 3)
   
   // 沙发
-  drawRect(W * 0.38, 38, 14, 5, '#F5DEB3')
-  drawRect(W * 0.38, 37, 14, 1, '#DEB887')
-  drawRect(W * 0.4, 40, 3, 2, '#8B4513')
-  // 沙发靠背
-  drawRect(W * 0.39, 36.5, 12, 1.5, '#DEB887')
+  drawRect(38, 38, 14, 5, '#F5DEB3')
+  drawRect(38, 37, 14, 1, '#DEB887')
+  drawRect(40, 40, 3, 2, '#8B4513')
+  drawRect(39, 36.5, 12, 1.5, '#DEB887')
   
   // 茶几
-  drawRect(W * 0.43, 44, 8, 3, '#8B4513')
+  drawRect(43, 44, 8, 3, '#8B4513')
   // 咖啡机
-  drawRect(W * 0.44, 40, 5, 5, '#A0A0A0')
-  drawRect(W * 0.45, 41, 3, 2, '#505050')
-  drawRect(W * 0.45, 39.5, 2, 1, '#505050')
+  drawRect(44, 40, 5, 5, '#A0A0A0')
+  drawRect(45, 41, 3, 2, '#505050')
   if (blink) {
-    drawRect(W * 0.45, 38.5, 1, 1, '#CCCCCC')
-    drawRect(W * 0.47, 38, 1, 1, '#CCCCCC')
+    drawRect(45, 38.5, 1, 1, '#CCCCCC')
+    drawRect(47, 38, 1, 1, '#CCCCCC')
   }
   // 马克杯
-  drawRect(W * 0.47, 43, 1.5, 1.5, '#FFFFFF')
-  drawRect(W * 0.49, 43, 1.5, 1.5, '#FFFFFF')
+  drawRect(47, 43, 1.5, 1.5, '#FFFFFF')
+  drawRect(49, 43, 1.5, 1.5, '#FFFFFF')
   
   // 大绿植
-  drawRect(W * 0.5, 35, 5, 5, '#8B4513')
-  drawRect(W * 0.5, 30, 1, 5, '#228B22')
-  drawRect(W * 0.52, 28, 1.5, 7, '#2ECC71')
-  drawRect(W * 0.54, 30, 1, 5, '#228B22')
-  drawRect(W * 0.51, 27, 1, 1, '#32CD32')
-  drawRect(W * 0.53, 26, 1, 1, '#32CD32')
+  drawRect(50, 35, 5, 5, '#8B4513')
+  drawRect(50, 30, 1, 5, '#228B22')
+  drawRect(52, 28, 1.5, 7, '#2ECC71')
+  drawRect(54, 30, 1, 5, '#228B22')
   
   // 边柜+台灯
-  drawRect(W * 0.38, 32, 4, 6, '#5D4037')
-  drawRect(W * 0.39, 30, 1, 2, '#8B4513')
-  drawRect(W * 0.38, 28, 3, 2, '#F5DEB3')
-  drawRect(W * 0.39, 27, 2, 1, '#FFFF00')
+  drawRect(38, 32, 4, 6, '#5D4037')
+  drawRect(39, 30, 1, 2, '#8B4513')
+  drawRect(38, 28, 3, 2, '#F5DEB3')
+  drawRect(39, 27, 2, 1, '#FFFF00')
   
-  drawRect(W * 0.52, 32, 4, 6, '#5D4037')
-  drawRect(W * 0.53, 30, 1, 2, '#8B4513')
-  drawRect(W * 0.52, 28, 3, 2, '#F5DEB3')
-  drawRect(W * 0.53, 27, 2, 1, '#FFFF00')
+  drawRect(52, 32, 4, 6, '#5D4037')
+  drawRect(53, 30, 1, 2, '#8B4513')
+  drawRect(52, 28, 3, 2, '#F5DEB3')
+  drawRect(53, 27, 2, 1, '#FFFF00')
   
   // ===== 右侧房间：机房+休息 =====
-  // CENTRAL PERK招牌
-  drawRect(W * 0.7, 3, 14, 7, '#228B22')
-  drawRect(W * 0.72, 5, 10, 3, '#FFFFFF')
-  drawText('CENTRAL', W * 0.73, 6, '#FFFFFF', 1.5)
-  drawText('PERK', W * 0.74, 8, '#FFFFFF', 1.5)
+  drawRect(70, 3, 14, 7, '#228B22')
+  drawRect(72, 5, 10, 3, '#FFFFFF')
+  drawText('CENTRAL', 73, 7, '#FFFFFF', 2.5)
+  drawText('PERK', 74, 10, '#FFFFFF', 2.5)
   
   // 服务器机柜
-  drawRect(W * 0.7, 30, 7, 12, '#1E3A5F')
-  drawRect(W * 0.72, 32, 3, 8, '#2C3E50')
-  drawRect(W * 0.73, 33, 1, 1, '#00FF00')
-  drawRect(W * 0.73, 35, 1, 1, '#00FF00')
-  drawRect(W * 0.73, 37, 1, 1, '#00FF00')
-  drawRect(W * 0.73, 39, 1, 1, '#00FF00')
+  drawRect(70, 30, 7, 12, '#1E3A5F')
+  drawRect(72, 32, 3, 8, '#2C3E50')
+  drawRect(73, 33, 1, 1, '#00FF00')
+  drawRect(73, 35, 1, 1, '#00FF00')
+  drawRect(73, 37, 1, 1, '#00FF00')
+  drawRect(73, 39, 1, 1, '#00FF00')
   
-  drawRect(W * 0.78, 30, 7, 12, '#1E3A5F')
-  drawRect(W * 0.8, 32, 3, 8, '#2C3E50')
-  drawRect(W * 0.81, 33, 1, 1, '#00FF00')
-  drawRect(W * 0.81, 35, 1, 1, '#00FF00')
-  drawRect(W * 0.81, 37, 1, 1, '#00FF00')
-  drawRect(W * 0.81, 39, 1, 1, '#00FF00')
+  drawRect(78, 30, 7, 12, '#1E3A5F')
+  drawRect(80, 32, 3, 8, '#2C3E50')
+  drawRect(81, 33, 1, 1, '#00FF00')
+  drawRect(81, 35, 1, 1, '#00FF00')
+  drawRect(81, 37, 1, 1, '#00FF00')
+  drawRect(81, 39, 1, 1, '#00FF00')
   
   // 告警灯
-  drawRect(W * 0.69, 28, 2, 2, blink ? '#FF0000' : '#550000')
-  drawRect(W * 0.86, 28, 2, 2, blink ? '#FF0000' : '#550000')
-  drawRect(W * 0.73, 27, 4, 1, '#FFFF00')
-  drawText('!', W * 0.74, 28, '#000000', 2)
+  drawRect(69, 28, 2, 2, blink ? '#FF0000' : '#550000')
+  drawRect(86, 28, 2, 2, blink ? '#FF0000' : '#550000')
+  drawRect(73, 27, 4, 1, '#FFFF00')
+  drawText('!', 74, 29, '#000000', 3)
   
   // 文件柜
-  drawRect(W * 0.85, 35, 5, 8, '#808080')
-  drawRect(W * 0.86, 36, 3, 1, '#606060')
-  drawRect(W * 0.86, 38, 3, 1, '#606060')
-  drawRect(W * 0.86, 40, 3, 1, '#606060')
+  drawRect(85, 35, 5, 8, '#808080')
+  drawRect(86, 36, 3, 1, '#606060')
+  drawRect(86, 38, 3, 1, '#606060')
+  drawRect(86, 40, 3, 1, '#606060')
   
   // 边柜+台灯
-  drawRect(W * 0.83, 44, 4, 5, '#5D4037')
-  drawRect(W * 0.84, 42, 1, 2, '#8B4513')
-  drawRect(W * 0.83, 40, 3, 2, '#F5DEB3')
-  drawRect(W * 0.84, 39, 2, 1, '#FFFF00')
+  drawRect(83, 44, 4, 5, '#5D4037')
+  drawRect(84, 42, 1, 2, '#8B4513')
+  drawRect(83, 40, 3, 2, '#F5DEB3')
+  drawRect(84, 39, 2, 1, '#FFFF00')
   
   // 床
-  drawRect(W * 0.7, 48, 12, 7, '#F5DEB3')
-  drawRect(W * 0.72, 49, 10, 5, '#FFFFFF')
-  drawRect(W * 0.73, 50, 3, 3, '#FFFFFF')
+  drawRect(70, 48, 12, 7, '#F5DEB3')
+  drawRect(72, 49, 10, 5, '#FFFFFF')
+  drawRect(73, 50, 3, 3, '#FFFFFF')
   // 床尾绿植
-  drawRect(W * 0.8, 52, 3, 3, '#8B4513')
-  drawRect(W * 0.8, 50, 3, 2, '#228B22')
+  drawRect(80, 52, 3, 3, '#8B4513')
+  drawRect(80, 50, 3, 2, '#228B22')
   
-  // ===== 底部横幅 =====
+  // 底部横幅
   drawRect(25, 0.5, 50, 4, '#5D4037')
   drawRect(24, 1.5, 1, 2, '#FFD700')
   drawRect(75, 1.5, 1, 2, '#FFD700')
-  drawText('niko的办公室', 35, 3, '#FFD700', 3)
+  drawText('niko办公室', 38, 4, '#FFD700', 5)
+  
+  ctx.restore()
 }
 
 function render(timestamp) {
