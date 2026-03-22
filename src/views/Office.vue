@@ -2,7 +2,6 @@
   <div class="container">
     <div ref="canvasContainer" class="canvas"></div>
     
-    <!-- 右侧状态面板 -->
     <div class="side-panel">
       <div class="panel-title">🐉 龙虾状态</div>
       <div class="status-list">
@@ -39,7 +38,6 @@
       </div>
     </div>
     
-    <!-- 底部UI面板 -->
     <div class="ui-panel">
       <div class="ui-section notes">
         <div class="section-title">📝 昨日小记</div>
@@ -100,33 +98,6 @@ const visitors = ref([
 let scene, camera, renderer, characters = [], serverLights = []
 let animationId = null
 
-// 配色
-const C = {
-  floor1: 0xD4A574,
-  floor2: 0xC49A6C,
-  wall: 0xE8DCC4,
-  wallDark: 0xD4C4A8,
-  desk: 0x8B6914,
-  deskTop: 0xD4B86A,
-  chair: 0x4A6FA5,
-  screen: 0x00D9FF,
-  screenOff: 0x2A2A3A,
-  window: 0x87CEEB,
-  curtain: 0xE8B4B8,
-  sofa: 0xC75D5D,
-  bed: 0x8B9DC4,
-  bookshelf: 0x8B4513,
-  coffee: 0x6F4E37,
-  server: 0x4A4A4A,
-  serverLight: 0xFF0000,
-  plant: 0x4CAF50,
-  cat: 0xFFA500,
-  poster: 0xE74C3C,
-  body1: 0x7CFC00,
-  body2: 0x9932CC,
-  body3: 0x00CED1,
-}
-
 function init() {
   const container = canvasContainer.value
   if (!container) return
@@ -170,129 +141,108 @@ function box(w, h, d, color, x, y, z) {
 }
 
 function createRoom() {
-  // 地板 - 填满整个屏幕
   for (let i = -8; i < 8; i++) {
     for (let j = -6; j < 6; j++) {
-      const color = (i + j) % 2 === 0 ? C.floor1 : C.floor2
+      const color = (i + j) % 2 === 0 ? 0xD4A574 : 0xC49A6C
       scene.add(box(3, 0.2, 3, color, i * 3, 0, j * 3))
     }
   }
-  
-  // 墙壁 - 四周环绕
-  // 后墙
-  scene.add(box(50, 16, 0.5, C.wall, 0, 8, -18))
-  // 左墙
-  scene.add(box(0.5, 16, 35, C.wall, -25, 8, 0))
-  // 右墙
-  scene.add(box(0.5, 16, 35, C.wall, 25, 8, 0))
+  scene.add(box(50, 16, 0.5, 0xE8DCC4, 0, 8, -18))
+  scene.add(box(0.5, 16, 35, 0xD4C4A8, -25, 8, 0))
+  scene.add(box(0.5, 16, 35, 0xD4C4A8, 25, 8, 0))
 }
 
 function createFurniture() {
-  // 窗帘
   for (let i = 0; i < 5; i++) {
-    scene.add(box(0.3, 12, 1.2, C.curtain, -20 + i * 8, 10, -17.5))
-    scene.add(box(0.3, 12, 1.2, C.curtain, -16 + i * 8, 10, -17.5))
-    scene.add(box(4, 7, 0.3, C.window, -18 + i * 8, 10, -17.8))
+    scene.add(box(0.3, 12, 1.2, 0xE8B4B8, -20 + i * 8, 10, -17.5))
+    scene.add(box(0.3, 12, 1.2, 0xE8B4B8, -16 + i * 8, 10, -17.5))
+    scene.add(box(4, 7, 0.3, 0x87CEEB, -18 + i * 8, 10, -17.8))
   }
 
-  // 5个工作位
   const deskPositions = [[-16, 4], [-8, 4], [0, 4], [8, 4], [16, 4]]
   deskPositions.forEach((pos, i) => {
-    scene.add(box(4, 0.3, 2.5, C.deskTop, pos[0], 3.5, pos[1]))
-    scene.add(box(0.3, 3.5, 0.3, C.desk, pos[0] - 1.7, 1.75, pos[1] - 1))
-    scene.add(box(0.3, 3.5, 0.3, C.desk, pos[0] + 1.7, 1.75, pos[1] - 1))
-    scene.add(box(0.3, 3.5, 0.3, C.desk, pos[0] - 1.7, 1.75, pos[1] + 1))
-    scene.add(box(0.3, 3.5, 0.3, C.desk, pos[0] + 1.7, 1.75, pos[1] + 1))
-    
+    scene.add(box(4, 0.3, 2.5, 0xD4B86A, pos[0], 3.5, pos[1]))
+    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] - 1.7, 1.75, pos[1] - 1))
+    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] + 1.7, 1.75, pos[1] - 1))
+    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] - 1.7, 1.75, pos[1] + 1))
+    scene.add(box(0.3, 3.5, 0.3, 0x8B6914, pos[0] + 1.7, 1.75, pos[1] + 1))
     scene.add(box(2, 1.5, 0.2, 0x333333, pos[0], 5, pos[1] - 1.2))
-    scene.add(box(1.5, 1, 0.1, C.screen, pos[0], 5, pos[1] - 1.1))
+    scene.add(box(1.5, 1, 0.1, i < 2 ? 0x00D9FF : 0x2A2A3A, pos[0], 5, pos[1] - 1.1))
     scene.add(box(0.8, 0.2, 0.6, 0x444444, pos[0], 3.7, pos[1] + 0.5))
     scene.add(box(1.5, 0.15, 0.8, 0x555555, pos[0], 3.7, pos[1] + 0.9))
-    scene.add(box(1.2, 0.25, 1.2, C.chair, pos[0], 1, pos[1] + 1.8))
-    scene.add(box(1.2, 2, 0.25, C.chair, pos[0], 2.2, pos[1] + 2.3))
+    scene.add(box(1.2, 0.25, 1.2, 0x4A6FA5, pos[0], 1, pos[1] + 1.8))
+    scene.add(box(1.2, 2, 0.25, 0x4A6FA5, pos[0], 2.2, pos[1] + 2.3))
   })
 
-  // 沙发
-  scene.add(box(8, 1.5, 3, C.sofa, -20, 0.75, -8))
-  scene.add(box(8, 2.5, 0.6, C.sofa, -20, 2, -9.8))
-
-  // 床
-  scene.add(box(6, 1.2, 5, C.bed, 18, 0.6, -10))
+  scene.add(box(8, 1.5, 3, 0xC75D5D, -20, 0.75, -8))
+  scene.add(box(8, 2.5, 0.6, 0xC75D5D, -20, 2, -9.8))
+  scene.add(box(6, 1.2, 5, 0x8B9DC4, 18, 0.6, -10))
   scene.add(box(6, 2.5, 0.6, 0xFFFFFF, 18, 1.8, -12.8))
 
-  // 书架
   for (let i = 0; i < 2; i++) {
-    scene.add(box(3, 10, 0.8, C.bookshelf, -23, 5, -5 + i * 12))
+    scene.add(box(3, 10, 0.8, 0x8B4513, -23, 5, -5 + i * 12))
     for (let j = 0; j < 7; j++) {
       const colors = [0xE74C3C, 0x3498DB, 0x2ECC71, 0xF1C40F, 0x9B59B6, 0xE67E22, 0x1ABC9C]
       scene.add(box(2.5, 0.6, 1.5, colors[j], -23, 1.3 + j * 1.3, -5 + i * 12))
     }
   }
 
-  // 咖啡机
-  scene.add(box(2, 3, 2, C.coffee, 22, 1.5, 8))
+  scene.add(box(2, 3, 2, 0x6F4E37, 22, 1.5, 8))
   scene.add(box(1.5, 0.6, 1.5, 0xCCCCCC, 22, 3.3, 8))
-
-  // 服务器
-  scene.add(box(4, 9, 2, C.server, 22, 4.5, -5))
+  scene.add(box(4, 9, 2, 0x4A4A4A, 22, 4.5, -5))
   for (let i = 0; i < 8; i++) {
-    const light = box(0.6, 0.6, 0.15, C.serverLight, 22.5, 8 - i * 1, -3.9)
+    const light = box(0.6, 0.6, 0.15, 0xFF0000, 22.5, 8 - i * 1, -3.9)
     serverLights.push(light)
     scene.add(light)
   }
 
-  // 盆栽
   scene.add(box(2.5, 4, 2.5, 0x8B4513, -20, 2, 10))
-  scene.add(box(3, 3.5, 3.5, C.plant, -20, 5.5, 10))
-
-  // 猫
-  scene.add(box(3, 1.5, 2.5, C.cat, 14, 0.75, 10))
+  scene.add(box(3, 3.5, 3.5, 0x4CAF50, -20, 5.5, 10))
+  scene.add(box(3, 1.5, 2.5, 0xFFA500, 14, 0.75, 10))
   scene.add(box(0.8, 0.8, 0.8, 0xFF8800, 13, 1.8, 10.5))
-
-  // 画
-  scene.add(box(6, 4, 0.3, C.poster, 22, 12, -17.5))
+  scene.add(box(6, 4, 0.3, 0xE74C3C, 22, 12, -17.5))
   scene.add(box(5, 3, 0.15, 0xFFFFFF, 22, 12, -17.35))
-
-  // 时钟
   scene.add(box(2.5, 2.5, 0.3, 0xFFFFFF, -22, 15, -17.5))
-
-  // 招牌
   scene.add(box(10, 2.5, 0.4, 0xFFA500, 0, 14, -17.5))
 }
 
 function createCharacters() {
   const positions = [[-16, 8], [-8, 8], [0, 8], [8, 8], [16, 8]]
-  const bodies = [C.body1, C.body2, C.body3, 0xFF6B6B, 0xFFB347]
+  
+  const styles = [
+    { body: 0x5D8A5D, eyes: 0xFFFFFF, accent: 0x3D6B3D },
+    { body: 0x8B6B8B, eyes: 0xFF6B6B, accent: 0x5D5D5D },
+    { body: 0x6B8B9B, eyes: 0x4ECDC4, accent: 0x3D5D5D },
+    { body: 0x9B6B5B, eyes: 0xFFD93D, accent: 0x6D5D4D },
+    { body: 0x8B7B6B, eyes: 0xFF6B6B, accent: 0x5D4D4D },
+  ]
   
   positions.forEach((pos, i) => {
-    const group = new THREE.Group()
+    const s = styles[i]
+    const g = new THREE.Group()
     
-    group.add(box(1.2, 1.8, 1, bodies[i], 0, 1.9, 0))
-    group.add(box(1.1, 1.1, 1.1, 0x90EE90, 0, 3.65, 0))
-    group.add(box(0.3, 0.35, 0.15, 0x000000, -0.35, 3.8, 0.55))
-    group.add(box(0.3, 0.35, 0.15, 0x000000, 0.35, 3.8, 0.55))
-    group.add(box(0.1, 0.1, 0.05, 0xFFFFFF, -0.3, 3.85, 0.6))
-    group.add(box(0.1, 0.1, 0.05, 0xFFFFFF, 0.4, 3.85, 0.6))
-    group.add(box(0.25, 0.18, 0.1, 0xFFAAAA, -0.5, 3.5, 0.55))
-    group.add(box(0.25, 0.18, 0.1, 0xFFAAAA, 0.5, 3.5, 0.55))
-    group.add(box(0.3, 0.15, 0.1, 0xFF6B6B, 0, 3.35, 0.55))
-    group.add(box(0.4, 0.55, 0.4, bodies[i], -0.65, 4.2, 0))
-    group.add(box(0.4, 0.55, 0.4, bodies[i], 0.65, 4.2, 0))
-    group.add(box(0.25, 0.4, 0.25, 0xFFAAAA, -0.65, 4.2, 0.1))
-    group.add(box(0.25, 0.4, 0.25, 0xFFAAAA, 0.65, 4.2, 0.1))
-    group.add(box(0.4, 0.7, 0.4, 0x333333, -0.35, 0.35, 0))
-    group.add(box(0.4, 0.7, 0.4, 0x333333, 0.35, 0.35, 0))
+    g.add(box(2, 2.5, 1.5, s.body, 0, 2.25, 0))
+    g.add(box(2.1, 2, 0.3, s.accent, 0, 2, 0.7))
+    g.add(box(1.8, 1.8, 1.8, s.body, 0, 4.4, 0))
+    g.add(box(1.4, 0.8, 0.3, 0xFFFFFF, 0, 4.5, 0.9))
+    g.add(box(0.4, 0.4, 0.2, s.eyes, -0.35, 4.5, 1.0))
+    g.add(box(0.4, 0.4, 0.2, s.eyes, 0.35, 4.5, 1.0))
+    g.add(box(0.15, 0.15, 0.1, 0xFFFFFF, -0.25, 4.55, 1.1))
+    g.add(box(0.15, 0.15, 0.1, 0xFFFFFF, 0.45, 4.55, 1.1))
+    g.add(box(0.5, 0.2, 0.15, 0x333333, 0, 3.9, 1.0))
+    g.add(box(0.3, 0.6, 0.3, s.body, -0.9, 5.3, 0))
+    g.add(box(0.3, 0.6, 0.3, s.body, 0.9, 5.3, 0))
+    g.add(box(0.15, 0.4, 0.15, s.eyes, -0.9, 5.7, 0))
+    g.add(box(0.15, 0.4, 0.15, s.eyes, 0.9, 5.7, 0))
+    g.add(box(0.5, 0.8, 0.5, s.body, -0.5, 0.4, 0))
+    g.add(box(0.5, 0.8, 0.5, s.body, 0.5, 0.4, 0))
+    g.add(box(0.7, 0.3, 0.8, s.accent, -0.5, 0.15, 0.1))
+    g.add(box(0.7, 0.3, 0.8, s.accent, 0.5, 0.15, 0.1))
 
-    group.position.set(pos[0], 0, pos[1])
-    group.userData = { 
-      baseZ: pos[1], 
-      walkZ: pos[1] + 4,
-      isWorking: false,
-      index: i
-    }
-    
-    scene.add(group)
-    characters.push(group)
+    g.position.set(pos[0], 0, pos[1])
+    g.userData = { baseZ: pos[1], walkZ: pos[1] + 4, isWorking: false, index: i }
+    scene.add(g)
+    characters.push(g)
   })
 }
 
@@ -303,13 +253,11 @@ function updateCharacters() {
   const isWorking = systemStatus.value === 'working'
   
   characters.forEach((char, i) => {
-    char.userData.isWorking = isWorking
-    
     if (isWorking) {
-      char.position.y = Math.sin(time * 6 + i) * 0.12
-      char.position.z = char.userData.walkZ + Math.sin(time * 0.8) * 1.2
+      char.position.y = Math.sin(time * 8 + i * 0.5) * 0.15
+      char.position.z = char.userData.walkZ + Math.sin(time * 1.2) * 1.5
     } else {
-      char.scale.setScalar(1 + Math.sin(time * 2 + i) * 0.025)
+      char.scale.setScalar(1 + Math.sin(time * 2 + i) * 0.02)
       char.position.z = char.userData.baseZ
       char.position.y = 0
     }
@@ -330,10 +278,8 @@ function animate() {
 function onWindowResize() {
   const container = canvasContainer.value
   if (!container) return
-  
   const width = container.clientWidth - 220
   const height = container.clientHeight - 110
-  
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
@@ -359,166 +305,54 @@ onUnmounted(() => {
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
-.container { 
-  width: 100vw; 
-  height: 100vh; 
-  display: flex; 
-  flex-direction: column;
-  position: relative;
-}
-
-.canvas { 
-  flex: 1; 
-  overflow: hidden;
-  position: relative;
-}
-.canvas canvas {
-  display: block;
-}
+.container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; }
+.canvas { flex: 1; overflow: hidden; }
+.canvas canvas { display: block; }
 
 .side-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 220px;
-  height: calc(100% - 110px);
+  position: absolute; top: 0; right: 0;
+  width: 220px; height: calc(100% - 110px);
   background: linear-gradient(180deg, #1a1a2e 0%, #2d2d44 100%);
-  border-left: 3px solid #E74C3C;
-  padding: 15px;
-  overflow-y: auto;
+  border-left: 3px solid #E74C3C; padding: 15px; overflow-y: auto;
 }
 
-.panel-title {
-  font-size: 14px;
-  color: #F1C40F;
-  margin-bottom: 15px;
-  text-align: center;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #E74C3C;
-}
-
-.status-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255,255,255,0.05);
-  padding: 8px;
-  border-radius: 6px;
-}
-
-.status-icon {
-  font-size: 16px;
-}
-
-.status-label {
-  flex: 1;
-  font-size: 10px;
-  color: #888;
-}
-
-.status-value {
-  font-size: 11px;
-  color: #4ECDC4;
-  font-weight: bold;
-}
+.panel-title { font-size: 14px; color: #F1C40F; margin-bottom: 15px; text-align: center; padding-bottom: 10px; border-bottom: 2px solid #E74C3C; }
+.status-list { display: flex; flex-direction: column; gap: 10px; }
+.status-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px; }
+.status-icon { font-size: 16px; }
+.status-label { flex: 1; font-size: 10px; color: #888; }
+.status-value { font-size: 11px; color: #4ECDC4; font-weight: bold; }
 
 .ui-panel {
-  height: 110px;
-  min-height: 110px;
+  height: 110px; min-height: 110px;
   background: linear-gradient(180deg, #2C2C3E 0%, #1A1A2E 100%);
-  border-top: 4px solid #E74C3C;
-  display: flex;
-  padding: 8px;
-  gap: 8px;
+  border-top: 4px solid #E74C3C; display: flex; padding: 8px; gap: 8px;
 }
 
-.ui-section {
-  background: #3A3A4A;
-  border: 3px solid #000;
-  padding: 6px;
-}
-
+.ui-section { background: #3A3A4A; border: 3px solid #000; padding: 6px; }
 .ui-section.notes { flex: 1; }
 .ui-section.status { width: 260px; }
 .ui-section.visitors { flex: 1; }
 
-.section-title {
-  font-size: 10px;
-  color: #F1C40F;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-}
+.section-title { font-size: 10px; color: #F1C40F; margin-bottom: 4px; text-transform: uppercase; }
+.notes-content p { font-size: 8px; color: #AAA; margin: 1px 0; }
 
-.notes-content p {
-  font-size: 8px;
-  color: #AAA;
-  margin: 1px 0;
-}
-
-.status-buttons {
-  display: flex;
-  gap: 4px;
-}
-
+.status-buttons { display: flex; gap: 4px; }
 .status-btn {
-  flex: 1;
-  background: #2A2A3A;
-  border: 2px solid #000;
-  color: #FFF;
-  padding: 4px 2px;
-  font-size: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
+  flex: 1; background: #2A2A3A; border: 2px solid #000; color: #FFF;
+  padding: 4px 2px; font-size: 8px; cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
-
 .status-btn:hover { background: #4A4A5A; }
 .status-btn.active { background: #E74C3C; border-color: #FFF; }
 .status-btn.alert.active { background: #FF0000; animation: blink 0.5s infinite; }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .btn-icon { font-size: 12px; }
 
-.visitor-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-height: 60px;
-  overflow-y: auto;
-}
-
-.visitor-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #2A2A3A;
-  padding: 3px 5px;
-  font-size: 8px;
-}
-
+.visitor-list { display: flex; flex-direction: column; gap: 3px; max-height: 60px; overflow-y: auto; }
+.visitor-item { display: flex; align-items: center; gap: 4px; background: #2A2A3A; padding: 3px 5px; font-size: 8px; }
 .visitor-avatar { font-size: 12px; }
 .visitor-name { flex: 1; color: #CCC; }
-
-.leave-btn {
-  background: #E74C3C;
-  border: 1px solid #000;
-  color: #FFF;
-  font-size: 7px;
-  padding: 2px 4px;
-  cursor: pointer;
-  font-family: inherit;
-}
+.leave-btn { background: #E74C3C; border: 1px solid #000; color: #FFF; font-size: 7px; padding: 2px 4px; cursor: pointer; font-family: inherit; }
 </style>
