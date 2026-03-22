@@ -108,22 +108,31 @@ let frame = 0
 
 // 角色精灵图 - 根据画布百分比定位
 function getCharacterPositions(canvasWidth, canvasHeight) {
-  // 每帧宽度是图片总宽的1/4
-  const frameWidth = 292 / 4 // 73px
-  const frameHeight = 664
+  // 背景图比例 1170:664 ≈ 16:9
+  // 根据画布比例计算缩放
+  const bgRatio = 1170 / 664
+  const canvasRatio = canvasWidth / canvasHeight
   
-  // 目标显示宽度是屏幕的8%
-  const targetWidth = canvasWidth * 0.08
-  const scale = targetWidth / frameWidth
+  let scale, offsetX = 0, offsetY = 0
   
-  const baseY = canvasHeight * 0.5
+  if (canvasRatio > bgRatio) {
+    // 画布更宽，以高度为基准
+    scale = canvasHeight / 664
+    offsetX = (canvasWidth - 1170 * scale) / 2
+  } else {
+    // 画布更高，以宽度为基准
+    scale = canvasWidth / 1170
+    offsetY = (canvasHeight - 664 * scale) / 2
+  }
+  
+  const baseY = canvasHeight * 0.55
   
   return [
-    { name: '蓝发', src: '/character-blue.png', x: canvasWidth * 0.08, y: baseY },
-    { name: '紫发', src: '/character-purple.png', x: canvasWidth * 0.24, y: baseY },
-    { name: '橙发', src: '/character-orange.png', x: canvasWidth * 0.40, y: baseY },
+    { name: '蓝发', src: '/character-blue.png', x: canvasWidth * 0.05, y: baseY },
+    { name: '紫发', src: '/character-purple.png', x: canvasWidth * 0.22, y: baseY },
+    { name: '橙发', src: '/character-orange.png', x: canvasWidth * 0.39, y: baseY },
     { name: '绿发', src: '/character-green.png', x: canvasWidth * 0.56, y: baseY },
-    { name: '粉发', src: '/character-pink.png', x: canvasWidth * 0.72, y: baseY },
+    { name: '粉发', src: '/character-pink.png', x: canvasWidth * 0.73, y: baseY },
   ]
 }
 
@@ -154,12 +163,12 @@ function drawCharacters() {
     const img = charImages[index]
     if (!img) return
     
-    // 原始帧大小
+    // 原始图片大小 1170x664，每帧 292.5x664
     const srcW = img.width / 4
     const srcH = img.height
     
-    // 目标显示大小 - 屏幕宽度的8%
-    const destW = canvas.width * 0.08
+    // 目标显示大小 - 屏幕宽度的15%
+    const destW = canvas.width * 0.15
     const destH = destW * (srcH / srcW)
     
     ctx.drawImage(
@@ -258,13 +267,16 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
 .bg-scene {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
   z-index: 1;
-  pointer-events: none;
 }
 
 .canvas { 
