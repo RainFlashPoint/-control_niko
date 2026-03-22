@@ -413,7 +413,9 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .canvas { 
   flex: 1; 
   width: 100%; 
-  height: calc(100% - 110px);
+  height: 100%;
+  min-height: 400px;
+  background: #1a1a2e;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
