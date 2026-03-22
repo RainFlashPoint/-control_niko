@@ -253,6 +253,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   position: relative;
   background: #1a1a2e;
   overflow: hidden;
+  z-index: 1;
 }
 
 .bg-scene {
@@ -261,8 +262,9 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: cover;
   z-index: 1;
+  pointer-events: none;
 }
 
 .canvas { 
@@ -279,7 +281,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   width: 220px; height: calc(100% - 110px);
   background: linear-gradient(180deg, #1a1a2e 0%, #2d2d44 100%);
   border-left: 3px solid #E74C3C; padding: 15px; overflow-y: auto;
-  z-index: 10;
+  z-index: 100;
 }
 .panel-title { font-size: 14px; color: #F1C40F; margin-bottom: 15px; text-align: center; padding-bottom: 10px; border-bottom: 2px solid #E74C3C; }
 .status-list { display: flex; flex-direction: column; gap: 10px; }
@@ -292,7 +294,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   height: 110px; min-height: 110px;
   background: linear-gradient(180deg, #2C2C3E 0%, #1A1A2E 100%);
   border-top: 4px solid #E74C3C; display: flex; padding: 8px; gap: 8px;
-  z-index: 10;
+  z-index: 100;
 }
 .ui-section { background: #3A3A4A; border: 3px solid #000; padding: 6px; }
 .ui-section.notes { flex: 1; }
