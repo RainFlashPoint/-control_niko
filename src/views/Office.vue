@@ -363,6 +363,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   width: 100%;
   height: 100%;
   z-index: 2;
+  background: transparent;
 }
 
 .side-panel {
