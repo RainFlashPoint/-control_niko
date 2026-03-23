@@ -276,8 +276,9 @@ onMounted(() => {
   ctx = canvas.getContext('2d')
   handleResize()
   
-  // 初始显示1个角色，即使API失败也有
-  initCharacters(1)
+  // 初始显示2个角色（默认工作模式）
+  initCharacters(2)
+  systemStatus.value = 'working'  // 默认工作
   
   render()
   window.addEventListener('resize', handleResize)
