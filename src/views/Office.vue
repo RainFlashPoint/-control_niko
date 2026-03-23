@@ -115,25 +115,32 @@ function onBgLoad() {
   bgImg = bgRef.value
 }
 
+// 角色配置 - 根据龙虾数量
+const charColors = ['blue', 'purple', 'orange', 'green', 'pink']
+
 // 自动获取OpenClaw状态
 async function fetchStatus() {
   try {
     const res = await fetch('http://localhost:3001/api/roles')
     const data = await res.json()
     if (data.code === 0 && data.data) {
+      // 过滤出活跃的agent作为角色
+      const activeAgents = data.data.filter(r => r.status === 'working' || r.id === 'main')
+      
+      // 根据agent数量决定显示多少角色
+      const charCount = Math.min(activeAgents.length, 5)
+      
+      // 更新状态
       const main = data.data.find(r => r.id === 'main')
       if (main) {
-        // 根据状态更新UI
         mainStatus.value = main.status === 'working' ? '工作中' : '在线'
         
-        // 自动更新角色状态
         if (main.status === 'working') {
           systemStatus.value = 'working'
         } else {
           systemStatus.value = 'idle'
         }
         
-        // 更新最后活跃时间
         if (main.lastActive && main.lastActive !== '-') {
           const lastTime = new Date(main.lastActive)
           const now = new Date()
@@ -145,8 +152,7 @@ async function fetchStatus() {
         }
       }
       
-      // 更新会话数
-      messageCount.value = data.data.length || 0
+      messageCount.value = activeAgents.length
     }
   } catch (e) {
     console.log('获取状态失败', e)
@@ -200,23 +206,27 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
-  // 绘制测试小人 - 根据自动状态
-  const charSize = canvas.width * 0.06
+  // 绘制多个小人物 - 根据状态
+  const charSize = canvas.width * 0.05
   const groundY = bg.y + bg.h * 0.88
-  const charX = bg.x + bg.w * 0.5
+  const charCount = 5  // 5个角色
+  const spacing = bg.w / (charCount + 1)
   
   ctx.font = `${charSize}px sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
   
-  // 根据自动检测的状态显示
-  let displayChar = '🧑‍💻'
-  if (systemStatus.value === 'idle') displayChar = '💤'
-  else if (systemStatus.value === 'working') displayChar = '💻'
-  else if (systemStatus.value === 'sync') displayChar = '🔄'
-  else if (systemStatus.value === 'alert') displayChar = '⚠️'
+  // 根据状态选择Emoji
+  const emojis = systemStatus.value === 'working' 
+    ? ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨']
+    : ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨']
   
-  ctx.fillText(displayChar, charX, groundY)
+  for (let i = 0; i < charCount; i++) {
+    const charX = bg.x + spacing * (i + 1)
+    // 上下浮动动画
+    const offsetY = Math.sin((frameIndex + i) * 0.5) * 5
+    ctx.fillText(emojis[i], charX, groundY + offsetY)
+  }
   
   animationId = requestAnimationFrame(render)
 }
