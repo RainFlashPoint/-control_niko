@@ -94,20 +94,25 @@ const canvasRef = ref(null)
 const bgRef = ref(null)
 const systemStatus = ref('idle')
 const mainStatus = ref('在线')
-const messageCount = ref(128)
-const uptime = ref('3h 25m')
-const tokenUsage = ref('45.2K')
-const visitors = ref([
-  { id: 1, name: '访客A', avatar: '🧑‍💻' },
-  { id: 2, name: '访客B', avatar: '👨‍🔬' }
-])
+const messageCount = ref(0)
+const uptime = ref('0分钟')
+const tokenUsage = ref('0K')
+const visitors = ref([])
+
+// 角色状态列表
+const characters = ref([])
+const characterCount = ref(0)
+
+// 角色Emoji
+const characterEmojis = ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨', '👨‍🎤', '👩‍🏫', '🧑‍🚀']
 
 let ctx, canvas, bgImg
 let animationId = null
 let bgLoaded = false
 let frameIndex = 0
 let lastFrameTime = 0
-const FRAME_RATE = 2
+let lastMoveTime = 0
+const FRAME_RATE = 4
 const FRAME_INTERVAL = 1000 / FRAME_RATE
 
 function onBgLoad() {
@@ -115,8 +120,42 @@ function onBgLoad() {
   bgImg = bgRef.value
 }
 
-// 角色配置 - 根据龙虾数量
-const charColors = ['blue', 'purple', 'orange', 'green', 'pink']
+// 初始化角色位置
+function initCharacters(count) {
+  characters.value = []
+  for (let i = 0; i < count; i++) {
+    characters.value.push({
+      x: 0.2 + (i * 0.15),  // 初始位置 (20%, 35%, 50%...)
+      direction: Math.random() > 0.5 ? 1 : -1,  // 移动方向
+      speed: 0.002 + Math.random() * 0.002,  // 移动速度
+      emoji: characterEmojis[i % characterEmojis.length]
+    })
+  }
+  characterCount.value = count
+}
+
+// 更新角色位置（走动逻辑）
+function updateCharacters() {
+  const now = Date.now()
+  if (now - lastMoveTime < 50) return  // 每50ms更新一次位置
+  lastMoveTime = now
+  
+  characters.value.forEach(char => {
+    // 只有在工作状态才走动
+    if (systemStatus.value === 'working') {
+      char.x += char.direction * char.speed
+      
+      // 边界检测 - 在10%到80%之间来回走动
+      if (char.x > 0.8) {
+        char.x = 0.8
+        char.direction = -1
+      } else if (char.x < 0.1) {
+        char.x = 0.1
+        char.direction = 1
+      }
+    }
+  })
+}
 
 // 自动获取OpenClaw状态
 async function fetchStatus() {
@@ -124,11 +163,13 @@ async function fetchStatus() {
     const res = await fetch('http://localhost:3001/api/roles')
     const data = await res.json()
     if (data.code === 0 && data.data) {
-      // 过滤出活跃的agent作为角色
-      const activeAgents = data.data.filter(r => r.status === 'working' || r.id === 'main')
+      // 只取活跃的agent（状态为working的）
+      const activeAgents = data.data.filter(r => r.status === 'working')
       
-      // 根据agent数量决定显示多少角色
-      const charCount = Math.min(activeAgents.length, 5)
+      // 更新角色数量
+      if (activeAgents.length !== characterCount.value) {
+        initCharacters(activeAgents.length)
+      }
       
       // 更新状态
       const main = data.data.find(r => r.id === 'main')
@@ -161,21 +202,7 @@ async function fetchStatus() {
 
 function getBgRect() {
   if (!bgImg || !canvas) return null
-  const imgRatio = bgImg.naturalWidth / bgImg.naturalHeight
-  const canvasRatio = canvas.width / canvas.height
-  let w, h, x, y
-  if (canvasRatio > imgRatio) {
-    h = canvas.height
-    w = h * imgRatio
-    x = (canvas.width - w) / 2
-    y = 0
-  } else {
-    w = canvas.width
-    h = w / imgRatio
-    x = 0
-    y = (canvas.height - h) / 2
-  }
-  return { x, y, w, h }
+  return { x: 0, y: 0, w: canvas.width, h: canvas.height }
 }
 
 function render() {
@@ -202,31 +229,29 @@ function render() {
     lastFrameTime = now
   }
   
+  // 更新角色位置
+  updateCharacters()
+  
   // 清除并绘制背景
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
-  // 绘制多个小人物 - 根据状态
-  const charSize = canvas.width * 0.05
-  const groundY = bg.y + bg.h * 0.88
-  const charCount = 5  // 5个角色
-  const spacing = bg.w / (charCount + 1)
+  // 绘制角色
+  const charSize = canvas.width * 0.06
+  const groundY = bg.h * 0.85  // 地面位置
   
   ctx.font = `${charSize}px sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
   
-  // 根据状态选择Emoji
-  const emojis = systemStatus.value === 'working' 
-    ? ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨']
-    : ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨']
-  
-  for (let i = 0; i < charCount; i++) {
-    const charX = bg.x + spacing * (i + 1)
-    // 上下浮动动画
-    const offsetY = Math.sin((frameIndex + i) * 0.5) * 5
-    ctx.fillText(emojis[i], charX, groundY + offsetY)
-  }
+  characters.value.forEach((char, i) => {
+    const charX = bg.x + bg.w * char.x
+    // 走路时的上下起伏
+    const bounceY = systemStatus.value === 'working' 
+      ? Math.sin(frameIndex * 1.5 + i) * 3 
+      : 0
+    ctx.fillText(char.emoji, charX, groundY + bounceY)
+  })
   
   animationId = requestAnimationFrame(render)
 }
@@ -247,6 +272,10 @@ onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   handleResize()
+  
+  // 初始显示0个角色，等待API返回
+  initCharacters(0)
+  
   render()
   window.addEventListener('resize', handleResize)
   
@@ -341,4 +370,3 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .visitor-name { flex: 1; color: #CCC; }
 .leave-btn { background: #E74C3C; border: 1px solid #000; color: #FFF; font-size: 7px; padding: 2px 4px; cursor: pointer; font-family: inherit; }
 </style>
-/* test auto deploy */
