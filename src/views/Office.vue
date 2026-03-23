@@ -103,9 +103,12 @@ const visitors = ref([])
 const characters = ref([])
 const characterCount = ref(0)
 
-// 角色图片
-const characterImages = [null, null]
-const charImageNames = ['/character-1.png', '/character-2.png']
+// 角色图片 - 8张图，每2张是同一个角色的2帧
+const characterImages = [null, null, null, null, null, null, null, null]
+const charImageNames = [
+  '/character-1.png', '/character-2.png', '/character-3.png', '/character-4.png',
+  '/character-5.png', '/character-6.png', '/character-7.png', '/character-8.png'
+]
 
 // 加载角色图片
 function loadCharacterImages() {
@@ -129,7 +132,7 @@ let bgLoaded = false
 let frameIndex = 0
 let lastFrameTime = 0
 let lastMoveTime = 0
-const FRAME_RATE = 4
+const FRAME_RATE = 2
 const FRAME_INTERVAL = 1000 / FRAME_RATE
 
 function onBgLoad() {
@@ -144,7 +147,7 @@ function initCharacters(count) {
     characters.value.push({
       x: 0.2 + (i * 0.25),  // 初始位置
       direction: Math.random() > 0.5 ? 1 : -1,  // 移动方向
-      speed: 0.005 + Math.random() * 0.003,  // 移动速度
+      speed: 0.001 + Math.random() * 0.001,  // 移动速度
       index: i  // 使用第几个角色图
     })
   }
@@ -256,27 +259,25 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
-  // 绘制角色图片
+  // 绘制角色图片 - 8张单独的图片
   const charWidth = canvas.width * 0.08
   const groundY = bg.h * 0.82
   
   characters.value.forEach((char, i) => {
-    if (!characterImages[i]) return
+    const imgIndex = char.index * 2 + (frameIndex % 2)  // 每个角色2帧交替
+    if (!characterImages[imgIndex]) return
     
     const charX = bg.x + bg.w * char.x - charWidth / 2
     const bounceY = systemStatus.value === 'working' 
       ? Math.sin(frameIndex * 1.5 + i) * 3 
       : 0
     
-    // 从精灵图中裁剪当前帧
-    const frameW = characterImages[i].width / 4
-    const frameH = characterImages[i].height
-    const srcX = frameIndex * frameW
+    const img = characterImages[imgIndex]
+    const aspectRatio = img.height / img.width
     
     ctx.drawImage(
-      characterImages[i],
-      srcX, 0, frameW, frameH,
-      charX, groundY + bounceY - charWidth * (frameH / frameW), charWidth, charWidth * (frameH / frameW)
+      img,
+      charX, groundY + bounceY - charWidth * aspectRatio, charWidth, charWidth * aspectRatio
     )
   })
   
