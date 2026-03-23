@@ -111,9 +111,10 @@ const charImages = [
 ]
 
 function initChars() {
+  // 两个角色在固定位置办公
   characters.value = [
-    { x: 20, dir: 1, speed: 0.5 },
-    { x: 50, dir: -1, speed: 0.4 }
+    { x: 15 },  // 左边位置
+    { x: 25 }   // 右边位置（靠近）
   ]
 }
 
@@ -133,22 +134,13 @@ function getCharStyle(i) {
   
   return {
     left: char.x + '%',
-    bottom: (18 + bounce) + '%'
+    bottom: '12%',
+    width: '6%'
   }
 }
 
 function update() {
-  const now = Date.now()
-  if (now - lastMoveTime < 50) return
-  lastMoveTime = now
-  
-  characters.value.forEach(char => {
-    if (systemStatus.value === 'working') {
-      char.x += char.dir * char.speed
-      if (char.x > 75) { char.x = 75; char.dir = -1 }
-      else if (char.x < 10) { char.x = 10; char.dir = 1 }
-    }
-  })
+  // 角色固定在位置办公，不走动
 }
 
 function loop() {
@@ -204,7 +196,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
 .char-box {
   position: absolute;
-  width: 8%;
+  width: 6%;
   transform: translateX(-50%);
 }
 
