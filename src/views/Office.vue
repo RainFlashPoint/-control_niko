@@ -106,8 +106,8 @@ let lastMoveTime = 0
 const FRAME_INTERVAL = 500
 
 const charImages = [
-  '/character-1-fixed2.png', '/character-2-fixed2.png', '/character-3-fixed2.png', '/character-4-fixed2.png',
-  '/character-5-fixed2.png', '/character-6-fixed2.png', '/character-7-fixed2.png', '/character-8-fixed2.png'
+  '/character-1-final.png', '/character-2-final.png', '/character-3-final.png', '/character-4-final.png',
+  '/character-5-final.png', '/character-6-final.png', '/character-7-final.png', '/character-8-final.png'
 ]
 
 function initChars() {
