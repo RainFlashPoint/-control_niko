@@ -257,7 +257,12 @@ function render() {
   
   // 清除并绘制背景
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
+  
+  // 绘制背景图
+  if (bgImg && bgImg.complete) {
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
+  }
   
   // 绘制角色图片 - 8张单独的图片
   const charWidth = canvas.width * 0.08
@@ -304,7 +309,7 @@ let statusInterval = null
 
 onMounted(() => {
   canvas = canvasRef.value
-  ctx = canvas.getContext('2d', { alpha: true })  // 启用透明通道
+  ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true })
   handleResize()
   
   // 加载角色图片
@@ -312,9 +317,10 @@ onMounted(() => {
   
   // 等待图片加载完成后初始化角色
   setTimeout(() => {
+    console.log('初始化角色，图片状态:', characterImages.map((img, i) => img ? `img${i} loaded` : `img${i} null`).join(', '))
     initCharacters(2)
     systemStatus.value = 'working'
-  }, 500)
+  }, 1000)
   
   render()
   window.addEventListener('resize', handleResize)
