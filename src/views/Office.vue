@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="canvas-container">
-      <img ref="bgImage" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
+      <img ref="bgRef" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
       <canvas ref="canvasRef" class="canvas"></canvas>
     </div>
     
@@ -91,119 +91,106 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const canvasRef = ref(null)
-const bgImage = ref(null)
+const bgRef = ref(null)
 const systemStatus = ref('idle')
 const visitors = ref([
   { id: 1, name: '访客A', avatar: '🧑‍💻' },
   { id: 2, name: '访客B', avatar: '👨‍🔬' }
 ])
 
-let ctx, canvas
+let ctx, canvas, bgImg
 let animationId = null
-let lastTime = 0
-const FPS = 8
-const frameTime = 1000 / FPS
+let bgLoaded = false
+let charImages = []
+let charLoaded = 0
+const FRAME_RATE = 8
+const FRAME_INTERVAL = 1000 / FRAME_RATE
+const FRAME_COUNT = 4
+let lastFrameTime = 0
+let currentFrameIndex = 0
 
-let frame = 0
-
-// 角色精灵图 - 根据画布百分比定位
-function getCharacterPositions(canvasWidth, canvasHeight) {
-  // 背景图比例 1170:664 ≈ 16:9
-  // 根据画布比例计算缩放
-  const bgRatio = 1170 / 664
-  const canvasRatio = canvasWidth / canvasHeight
-  
-  let scale, offsetX = 0, offsetY = 0
-  
-  if (canvasRatio > bgRatio) {
-    // 画布更宽，以高度为基准
-    scale = canvasHeight / 664
-    offsetX = (canvasWidth - 1170 * scale) / 2
-  } else {
-    // 画布更高，以宽度为基准
-    scale = canvasWidth / 1170
-    offsetY = (canvasHeight - 664 * scale) / 2
-  }
-  
-  const baseY = canvasHeight * 0.55
-  
-  return [
-    { name: '蓝发', src: '/character-blue.png', x: canvasWidth * 0.05, y: baseY },
-    { name: '紫发', src: '/character-purple.png', x: canvasWidth * 0.22, y: baseY },
-    { name: '橙发', src: '/character-orange.png', x: canvasWidth * 0.39, y: baseY },
-    { name: '绿发', src: '/character-green.png', x: canvasWidth * 0.56, y: baseY },
-    { name: '粉发', src: '/character-pink.png', x: canvasWidth * 0.73, y: baseY },
-  ]
-}
-
-const charImages = []
-let charImagesLoaded = 0
-
-function loadCharacterImages() {
-  characters.forEach((char, index) => {
-    const img = new Image()
-    img.src = char.src
-    img.onload = () => {
-      charImages[index] = img
-      charImagesLoaded++
-    }
-  })
-}
+const charSrcs = [
+  '/character-blue.png',
+  '/character-purple.png',
+  '/character-orange.png',
+  '/character-green.png',
+  '/character-pink.png'
+]
 
 function onBgLoad() {
-  // 背景加载完成后开始渲染
-  render()
+  bgLoaded = true
+  bgImg = bgRef.value
 }
 
-function drawCharacters() {
-  const frameCol = frame % 4 // 4帧动画
-  const characters = getCharacterPositions(canvas.width, canvas.height)
-  
-  characters.forEach((char, index) => {
-    const img = charImages[index]
-    if (!img) return
-    
-    // 原始图片大小 1170x664，每帧 292.5x664
-    const srcW = img.width / 4
-    const srcH = img.height
-    
-    // 目标显示大小 - 屏幕宽度的15%
-    const destW = canvas.width * 0.15
-    const destH = destW * (srcH / srcW)
-    
-    ctx.drawImage(
-      img,
-      frameCol * srcW, 0, srcW, srcH,
-      char.x, char.y, destW, destH
-    )
+function loadCharacters() {
+  charImages = charSrcs.map(() => null)
+  charSrcs.forEach((src, i) => {
+    const img = new Image()
+    img.onload = () => {
+      charImages[i] = img
+      charLoaded++
+    }
+    img.src = src
   })
+}
+
+// 获取背景图在画布中的实际显示区域（cover模式）
+function getBgRect() {
+  if (!bgImg || !canvas) return { x: 0, y: 0, w: canvas?.width || 800, h: canvas?.height || 600 }
+
+  const scale = Math.max(canvas.width / bgImg.naturalWidth, canvas.height / bgImg.naturalHeight)
+  const w = bgImg.naturalWidth * scale
+  const h = bgImg.naturalHeight * scale
+  const x = (canvas.width - w) / 2
+  const y = (canvas.height - h) / 2
+  return { x, y, w, h }
 }
 
 function render() {
-  // 等待图片加载完成
-  if (charImagesLoaded < characters.length) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  
   if (!ctx || !canvas) {
     animationId = requestAnimationFrame(render)
     return
   }
   
-  const now = Date.now()
-  if (now - lastTime < frameTime) {
+  if (!bgLoaded) {
     animationId = requestAnimationFrame(render)
     return
   }
-  lastTime = now
-  frame++
+
+  const now = performance.now()
+  if (!lastFrameTime) {
+    lastFrameTime = now
+  } else if (now - lastFrameTime >= FRAME_INTERVAL) {
+    currentFrameIndex = (currentFrameIndex + 1) % FRAME_COUNT
+    lastFrameTime = now
+  }
   
-  // 清空
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+  const bg = getBgRect()
+  ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
-  // 绘制角色精灵
-  drawCharacters()
+  if (charLoaded >= charSrcs.length) {
+    const frameCol = currentFrameIndex
+    const charW = canvas.width * 0.12
+    const groundY = bg.y + bg.h * 0.88
+    const spacing = bg.w / (charImages.length + 1)
+
+    charImages.forEach((img, i) => {
+      if (!img) return
+      
+      const srcW = img.naturalWidth / FRAME_COUNT
+      const srcH = img.naturalHeight
+      const destW = charW
+      const destH = destW * (srcH / srcW)
+      const posX = bg.x + spacing * (i + 1) - destW / 2
+      
+      ctx.drawImage(
+        img,
+        frameCol * srcW, 0, srcW, srcH,
+        posX, groundY - destH, destW, destH
+      )
+    })
+  }
   
   animationId = requestAnimationFrame(render)
 }
@@ -212,30 +199,21 @@ function removeVisitor(id) {
   visitors.value = visitors.value.filter(v => v.id !== id)
 }
 
-onMounted(() => {
-  canvas = canvasRef.value
-  ctx = canvas.getContext('2d')
-  
-  // 画布铺满容器
+function handleResize() {
+  if (!canvas || !canvasRef.value) return
   const container = canvasRef.value.parentElement
   canvas.width = container.clientWidth
   canvas.height = container.clientHeight
-  
-  // 加载角色图片
-  loadCharacterImages()
-  
+}
+
+onMounted(() => {
+  canvas = canvasRef.value
+  ctx = canvas.getContext('2d')
+  handleResize()
+  loadCharacters()
   render()
-  
-  // 监听窗口大小变化
   window.addEventListener('resize', handleResize)
 })
-
-function handleResize() {
-  const container = canvasRef.value?.parentElement
-  if (!container) return
-  canvas.width = container.clientWidth
-  canvas.height = container.clientHeight
-}
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
@@ -248,34 +226,22 @@ onUnmounted(() => {
 html, body { width: 100%; height: 100%; overflow: hidden; }
 body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 
-.container { 
-  width: 100vw; 
-  height: 100vh; 
-  display: flex; 
-  flex-direction: column; 
-  position: relative;
-  background: #1a1a2e;
-}
+.container { width: 100vw; height: 100vh; display: flex; flex-direction: column; position: relative; background: #1a1a2e; }
 
 .canvas-container {
   flex: 1;
   position: relative;
-  background: #1a1a2e;
+  background: #0d0d1a;
   overflow: hidden;
-  z-index: 1;
 }
 
 .bg-scene {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 100%;
-  min-height: 100%;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   z-index: 1;
 }
 
