@@ -176,7 +176,6 @@ async function fetchStatus() {
       }
       
       // 更新状态
-      const main = data.data.find(r => r.id === 'main')
       if (main) {
         mainStatus.value = main.status === 'working' ? '工作中' : '在线'
         
