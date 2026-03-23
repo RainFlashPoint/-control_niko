@@ -111,10 +111,10 @@ const charImages = [
 ]
 
 function initChars() {
-  // 两个角色在固定位置办公
+  // 角色1在电脑前，角色2在服务器前
   characters.value = [
-    { x: 15 },  // 左边位置
-    { x: 25 }   // 右边位置（靠近）
+    { x: 15 },  // 电脑前
+    { x: 75 }   // 服务器前
   ]
 }
 
