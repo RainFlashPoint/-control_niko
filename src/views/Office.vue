@@ -264,12 +264,11 @@ function render() {
   const groundY = bg.h * 0.82
   
   characters.value.forEach((char, i) => {
-    const imgIndex = char.index * 2 + (frameIndex % 2)  // 每个角色2帧交替
-    const img = characterImages[imgIndex]
-    if (!img) {
-      console.log(`角色${i}图片未加载:`, imgIndex)
-      return
-    }
+    // 角色1: 图片0,1 | 角色2: 图片2,3
+    const baseIdx = char.index * 4
+    const imgIdx = baseIdx + frameIndex
+    const img = characterImages[imgIdx]
+    if (!img) return
     
     const charX = bg.x + bg.w * char.x - charWidth / 2
     const bounceY = systemStatus.value === 'working' 
@@ -279,7 +278,8 @@ function render() {
     const aspectRatio = img.height / img.width
     const charHeight = charWidth * aspectRatio
     
-    // 绘制到地面上
+    // 绘制透明背景图片
+    ctx.globalAlpha = 1.0
     ctx.drawImage(
       img,
       0, 0, img.width, img.height,
