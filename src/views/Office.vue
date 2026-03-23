@@ -163,8 +163,12 @@ async function fetchStatus() {
     const res = await fetch('http://localhost:3001/api/roles')
     const data = await res.json()
     if (data.code === 0 && data.data) {
-      // 只取活跃的agent（状态为working的）
-      const activeAgents = data.data.filter(r => r.status === 'working')
+      // 取活跃的agent + main（至少显示main）
+      let activeAgents = data.data.filter(r => r.status === 'working')
+      const main = data.data.find(r => r.id === 'main')
+      if (main && !activeAgents.find(a => a.id === 'main')) {
+        activeAgents.push(main)
+      }
       
       // 更新角色数量
       if (activeAgents.length !== characterCount.value) {
