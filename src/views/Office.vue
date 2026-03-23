@@ -187,7 +187,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .bg-img {
   position: absolute;
   top: 0; left: 0;
-  width: calc(100% - 220px);
+  width: 100%;
   height: 100%;
   object-fit: cover;
   z-index: 1;
@@ -196,7 +196,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .chars-layer {
   position: absolute;
   top: 0; left: 0;
-  width: calc(100% - 220px);
+  width: 100%;
   height: 100%;
   z-index: 10;
   pointer-events: none;
