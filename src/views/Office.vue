@@ -1,13 +1,7 @@
 <template>
   <div class="container">
     <div class="canvas-container">
-      <img ref="bgRef" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
-      <!-- 角色层 -->
-      <div class="characters">
-        <div v-for="(char, i) in characters" :key="i" class="character" :style="getCharacterStyle(char, i)">
-          <img :src="getCharacterImage(char, i)" class="char-img" />
-        </div>
-      </div>
+      <canvas ref="canvasRef" class="canvas"></canvas>
     </div>
     
     <div class="side-panel">
@@ -96,184 +90,117 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 
 const canvasRef = ref(null)
-const bgRef = ref(null)
-const systemStatus = ref('idle')
-const mainStatus = ref('在线')
-const messageCount = ref(0)
-const uptime = ref('0分钟')
+const systemStatus = ref('working')
+const mainStatus = ref('工作中')
+const messageCount = ref(2)
+const uptime = ref('刚刚')
 const tokenUsage = ref('0K')
 const visitors = ref([])
 
-// 角色状态列表
+// 角色状态
 const characters = ref([])
-const characterCount = ref(0)
+const frameIndex = ref(0)
 
-// 角色图片 - 8张图，每2张是同一个角色的2帧
-const characterImages = [null, null, null, null, null, null, null, null]
+let ctx, canvas
+let animationId = null
+let lastFrameTime = 0
+const FRAME_RATE = 2
+const FRAME_INTERVAL = 1000 / FRAME_RATE
+let lastMoveTime = 0
+
+// 背景图
+const bgImg = new Image()
+bgImg.src = '/bg-scene.png'
+let bgLoaded = false
+bgImg.onload = () => { bgLoaded = true }
+
+// 8张角色图
+const charImages = [null,null,null,null,null,null,null,null]
 const charImageNames = [
   '/character-1.png', '/character-2.png', '/character-3.png', '/character-4.png',
   '/character-5.png', '/character-6.png', '/character-7.png', '/character-8.png'
 ]
 
-// 加载角色图片
-function loadCharacterImages() {
-  console.log('开始加载角色图片...')
+// 加载图片
+function loadImages() {
   charImageNames.forEach((src, i) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      console.log(`角色${i}加载成功:`, img.width, img.height, img.complete)
-      characterImages[i] = img
-    }
-    img.onerror = (e) => {
-      console.log(`角色${i}加载失败:`, src, e)
-    }
+    img.onload = () => { charImages[i] = img }
     img.src = src
   })
 }
 
-let ctx, canvas, bgImg
-let animationId = null
-let bgLoaded = false
-let frameIndex = 0
-let lastFrameTime = 0
-let lastMoveTime = 0
-const FRAME_RATE = 2
-const FRAME_INTERVAL = 1000 / FRAME_RATE
-
-function onBgLoad() {
-  bgLoaded = true
-  bgImg = bgRef.value
-}
-
-// 初始化角色位置
+// 初始化角色
 function initCharacters(count) {
   characters.value = []
   for (let i = 0; i < count; i++) {
     characters.value.push({
-      x: 0.2 + (i * 0.25),  // 初始位置
-      direction: Math.random() > 0.5 ? 1 : -1,  // 移动方向
-      speed: 0.001 + Math.random() * 0.001,  // 移动速度
-      index: i  // 使用第几个角色图
+      x: 0.2 + i * 0.3,
+      direction: 1,
+      speed: 0.002
     })
   }
-  characterCount.value = count
 }
 
-// 更新角色位置（走动逻辑）
+// 更新角色位置
 function updateCharacters() {
   const now = Date.now()
-  if (now - lastMoveTime < 50) return  // 每50ms更新一次位置
+  if (now - lastMoveTime < 50) return
   lastMoveTime = now
   
   characters.value.forEach(char => {
-    // 只有在工作状态才走动
     if (systemStatus.value === 'working') {
       char.x += char.direction * char.speed
-      
-      // 边界检测 - 在10%到80%之间来回走动
-      if (char.x > 0.8) {
-        char.x = 0.8
-        char.direction = -1
-      } else if (char.x < 0.1) {
-        char.x = 0.1
-        char.direction = 1
-      }
+      if (char.x > 0.8) { char.x = 0.8; char.direction = -1 }
+      else if (char.x < 0.1) { char.x = 0.1; char.direction = 1 }
     }
   })
 }
 
-// 自动获取OpenClaw状态
-async function fetchStatus() {
-  try {
-    const res = await fetch('http://localhost:3001/api/roles')
-    const data = await res.json()
-    if (data.code === 0 && data.data) {
-      // 取活跃的agent + main（至少显示main）
-      let activeAgents = data.data.filter(r => r.status === 'working')
-      const main = data.data.find(r => r.id === 'main')
-      if (main && !activeAgents.find(a => a.id === 'main')) {
-        activeAgents.push(main)
-      }
-      
-      // 更新角色数量
-      if (activeAgents.length !== characterCount.value) {
-        initCharacters(activeAgents.length)
-      }
-      
-      // 更新状态
-      if (main) {
-        mainStatus.value = main.status === 'working' ? '工作中' : '在线'
-        
-        if (main.status === 'working') {
-          systemStatus.value = 'working'
-        } else {
-          systemStatus.value = 'idle'
-        }
-        
-        if (main.lastActive && main.lastActive !== '-') {
-          const lastTime = new Date(main.lastActive)
-          const now = new Date()
-          const diffMs = now - lastTime
-          const diffMins = Math.floor(diffMs / 60000)
-          if (diffMins < 1) uptime.value = '刚刚'
-          else if (diffMins < 60) uptime.value = diffMins + '分钟'
-          else uptime.value = Math.floor(diffMins / 60) + '小时'
-        }
-      }
-      
-      messageCount.value = activeAgents.length
-    }
-  } catch (e) {
-    console.log('获取状态失败', e)
-  }
-}
-
-function getBgRect() {
-  return { w: window.innerWidth - 220, h: window.innerHeight - 110 }
-}
-
-// 获取角色图片URL
-function getCharacterImage(char, i) {
-  const baseIdx = char.index * 4
-  const imgIdx = baseIdx + (frameIndex % 4)
-  return charImageNames[imgIdx]
-}
-
-// 获取角色样式
-function getCharacterStyle(char, i) {
-  const bg = getBgRect()
-  const groundY = bg.h * 0.82
-  const charWidth = bg.w * 0.08
-  const bounceY = systemStatus.value === 'working' 
-    ? Math.sin(frameIndex * 1.5 + i) * 5 
-    : 0
-  
-  return {
-    left: `${char.x * bg.w}px`,
-    bottom: `${groundY - bounceY}px`,
-    width: `${charWidth}px`
-  }
-}
-
 function render() {
-  if (!bgLoaded) {
+  if (!ctx || !canvas) {
     animationId = requestAnimationFrame(render)
     return
   }
   
-  // 帧率控制
   const now = performance.now()
   if (!lastFrameTime) lastFrameTime = now
   if (now - lastFrameTime >= FRAME_INTERVAL) {
-    frameIndex = (frameIndex + 1) % 4
+    frameIndex.value = (frameIndex.value + 1) % 4
     lastFrameTime = now
-    // 触发Vue响应式更新
-    characters.value = [...characters.value]
   }
   
-  // 更新角色位置
   updateCharacters()
+  
+  // 绘制
+  const w = canvas.width
+  const h = canvas.height
+  
+  // 清空
+  ctx.clearRect(0, 0, w, h)
+  
+  // 背景
+  if (bgLoaded) {
+    ctx.drawImage(bgImg, 0, 0, w, h)
+  }
+  
+  // 角色
+  const charW = w * 0.08
+  const groundY = h * 0.82
+  
+  characters.value.forEach((char, i) => {
+    const baseIdx = i * 4
+    const imgIdx = baseIdx + (frameIndex.value % 4)
+    const img = charImages[imgIdx]
+    if (!img) return
+    
+    const charX = w * char.x
+    const bounceY = systemStatus.value === 'working' ? Math.sin(frameIndex.value * 1.5 + i) * 3 : 0
+    const aspectRatio = img.height / img.width
+    const charH = charW * aspectRatio
+    
+    ctx.drawImage(img, charX - charW/2, groundY - charH + bounceY, charW, charH)
+  })
   
   animationId = requestAnimationFrame(render)
 }
@@ -283,34 +210,24 @@ function removeVisitor(id) {
 }
 
 function handleResize() {
-  if (!canvas || !canvasRef.value) return
-  canvas.width = canvasRef.value.parentElement.clientWidth
-  canvas.height = canvasRef.value.parentElement.clientHeight
+  if (!canvas) return
+  canvas.width = canvas.parentElement.clientWidth
+  canvas.height = canvas.parentElement.clientHeight
 }
 
-let statusInterval = null
-
 onMounted(() => {
+  canvas = canvasRef.value
+  ctx = canvas.getContext('2d')
   handleResize()
-  
-  // 等待图片加载完成后初始化角色
-  setTimeout(() => {
-    initCharacters(2)
-    systemStatus.value = 'working'
-  }, 500)
-  
+  loadImages()
+  initCharacters(2)
   render()
   window.addEventListener('resize', handleResize)
-  
-  // 每10秒自动获取一次状态
-  fetchStatus()
-  statusInterval = setInterval(fetchStatus, 10000)
 })
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
   window.removeEventListener('resize', handleResize)
-  if (statusInterval) clearInterval(statusInterval)
 })
 </script>
 
@@ -324,40 +241,8 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .canvas-container {
   flex: 1;
   position: relative;
-  background: transparent;
-  overflow: hidden;
   margin-right: 220px;
-}
-
-.characters {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.character {
-  position: absolute;
-  transform: translateX(-50%);
-}
-
-.char-img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.bg-scene {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 1;
+  overflow: hidden;
 }
 
 .canvas { 
@@ -366,8 +251,6 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 2;
-  background: transparent;
 }
 
 .side-panel {
