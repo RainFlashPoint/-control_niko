@@ -213,6 +213,8 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   height: auto;
   display: block;
   image-rendering: pixelated;
+  mix-blend-mode: multiply;
+  background: transparent;
 }
 
 .side-panel {
