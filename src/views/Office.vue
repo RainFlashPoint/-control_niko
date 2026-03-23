@@ -103,11 +103,12 @@ let animationId = null
 let bgLoaded = false
 let charImages = []
 let charLoaded = 0
-const FRAME_RATE = 8
+let currentFrameIndex = 0
+let lastFrameTime = 0
+
+const FRAME_RATE = 4  // 慢速动画
 const FRAME_INTERVAL = 1000 / FRAME_RATE
 const FRAME_COUNT = 4
-let lastFrameTime = 0
-let currentFrameIndex = 0
 
 const charSrcs = [
   '/character-blue.png',
@@ -134,15 +135,24 @@ function loadCharacters() {
   })
 }
 
-// 获取背景图在画布中的实际显示区域（cover模式）
 function getBgRect() {
-  if (!bgImg || !canvas) return { x: 0, y: 0, w: canvas?.width || 800, h: canvas?.height || 600 }
-
-  const scale = Math.max(canvas.width / bgImg.naturalWidth, canvas.height / bgImg.naturalHeight)
-  const w = bgImg.naturalWidth * scale
-  const h = bgImg.naturalHeight * scale
-  const x = (canvas.width - w) / 2
-  const y = (canvas.height - h) / 2
+  if (!bgImg || !canvas) return null
+  
+  const imgRatio = bgImg.naturalWidth / bgImg.naturalHeight
+  const canvasRatio = canvas.width / canvas.height
+  
+  let w, h, x, y
+  if (canvasRatio > imgRatio) {
+    h = canvas.height
+    w = h * imgRatio
+    x = (canvas.width - w) / 2
+    y = 0
+  } else {
+    w = canvas.width
+    h = w / imgRatio
+    x = 0
+    y = (canvas.height - h) / 2
+  }
   return { x, y, w, h }
 }
 
@@ -152,11 +162,19 @@ function render() {
     return
   }
   
-  if (!bgLoaded) {
+  // 等待背景加载
+  if (!bgLoaded || !bgImg) {
     animationId = requestAnimationFrame(render)
     return
   }
-
+  
+  const bg = getBgRect()
+  if (!bg) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  
+  // 帧率控制
   const now = performance.now()
   if (!lastFrameTime) {
     lastFrameTime = now
@@ -165,14 +183,23 @@ function render() {
     lastFrameTime = now
   }
   
+  // 清除画布
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  const bg = getBgRect()
+  
+  // 绘制背景
   ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
+  // 绘制角色
   if (charLoaded >= charSrcs.length) {
     const frameCol = currentFrameIndex
-    const charW = canvas.width * 0.12
+    
+    // 角色大小 - 屏幕宽度的8%
+    const charW = canvas.width * 0.08
+    
+    // 地面位置
     const groundY = bg.y + bg.h * 0.88
+    
+    // 均匀分布
     const spacing = bg.w / (charImages.length + 1)
 
     charImages.forEach((img, i) => {
