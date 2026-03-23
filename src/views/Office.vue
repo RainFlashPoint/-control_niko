@@ -112,15 +112,16 @@ const charImageNames = [
 
 // 加载角色图片
 function loadCharacterImages() {
-  console.log('加载角色图片...')
+  console.log('开始加载角色图片...')
   charImageNames.forEach((src, i) => {
     const img = new Image()
+    img.crossOrigin = 'anonymous'
     img.onload = () => {
-      console.log(`角色${i+1}加载成功:`, img.width, img.height)
+      console.log(`角色${i}加载成功:`, img.width, img.height, img.complete)
       characterImages[i] = img
     }
-    img.onerror = () => {
-      console.log(`角色${i+1}加载失败:`, src)
+    img.onerror = (e) => {
+      console.log(`角色${i}加载失败:`, src, e)
     }
     img.src = src
   })
