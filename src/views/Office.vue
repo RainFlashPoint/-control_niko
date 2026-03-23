@@ -109,10 +109,15 @@ const charImageNames = ['/character-1.png', '/character-2.png']
 
 // 加载角色图片
 function loadCharacterImages() {
+  console.log('加载角色图片...')
   charImageNames.forEach((src, i) => {
     const img = new Image()
     img.onload = () => {
+      console.log(`角色${i+1}加载成功:`, img.width, img.height)
       characterImages[i] = img
+    }
+    img.onerror = () => {
+      console.log(`角色${i+1}加载失败:`, src)
     }
     img.src = src
   })
@@ -124,7 +129,7 @@ let bgLoaded = false
 let frameIndex = 0
 let lastFrameTime = 0
 let lastMoveTime = 0
-const FRAME_RATE = 4
+const FRAME_RATE = 8
 const FRAME_INTERVAL = 1000 / FRAME_RATE
 
 function onBgLoad() {
@@ -139,7 +144,7 @@ function initCharacters(count) {
     characters.value.push({
       x: 0.2 + (i * 0.25),  // 初始位置
       direction: Math.random() > 0.5 ? 1 : -1,  // 移动方向
-      speed: 0.003 + Math.random() * 0.002,  // 移动速度
+      speed: 0.005 + Math.random() * 0.003,  // 移动速度
       index: i  // 使用第几个角色图
     })
   }
