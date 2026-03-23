@@ -103,8 +103,20 @@ const visitors = ref([])
 const characters = ref([])
 const characterCount = ref(0)
 
-// 角色Emoji
-const characterEmojis = ['🧑‍💻', '👩‍💼', '👨‍💼', '🧑‍🔬', '👩‍🎨', '👨‍🎤', '👩‍🏫', '🧑‍🚀']
+// 角色图片
+const characterImages = [null, null]
+const charImageNames = ['/character-1.png', '/character-2.png']
+
+// 加载角色图片
+function loadCharacterImages() {
+  charImageNames.forEach((src, i) => {
+    const img = new Image()
+    img.onload = () => {
+      characterImages[i] = img
+    }
+    img.src = src
+  })
+}
 
 let ctx, canvas, bgImg
 let animationId = null
@@ -125,10 +137,10 @@ function initCharacters(count) {
   characters.value = []
   for (let i = 0; i < count; i++) {
     characters.value.push({
-      x: 0.2 + (i * 0.15),  // 初始位置 (20%, 35%, 50%...)
+      x: 0.2 + (i * 0.25),  // 初始位置
       direction: Math.random() > 0.5 ? 1 : -1,  // 移动方向
-      speed: 0.002 + Math.random() * 0.002,  // 移动速度
-      emoji: characterEmojis[i % characterEmojis.length]
+      speed: 0.003 + Math.random() * 0.002,  // 移动速度
+      index: i  // 使用第几个角色图
     })
   }
   characterCount.value = count
@@ -239,21 +251,28 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
   
-  // 绘制角色
-  const charSize = canvas.width * 0.06
-  const groundY = bg.h * 0.85  // 地面位置
-  
-  ctx.font = `${charSize}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'bottom'
+  // 绘制角色图片
+  const charWidth = canvas.width * 0.08
+  const groundY = bg.h * 0.82
   
   characters.value.forEach((char, i) => {
-    const charX = bg.x + bg.w * char.x
-    // 走路时的上下起伏
+    if (!characterImages[i]) return
+    
+    const charX = bg.x + bg.w * char.x - charWidth / 2
     const bounceY = systemStatus.value === 'working' 
       ? Math.sin(frameIndex * 1.5 + i) * 3 
       : 0
-    ctx.fillText(char.emoji, charX, groundY + bounceY)
+    
+    // 从精灵图中裁剪当前帧
+    const frameW = characterImages[i].width / 4
+    const frameH = characterImages[i].height
+    const srcX = frameIndex * frameW
+    
+    ctx.drawImage(
+      characterImages[i],
+      srcX, 0, frameW, frameH,
+      charX, groundY + bounceY - charWidth * (frameH / frameW), charWidth, charWidth * (frameH / frameW)
+    )
   })
   
   animationId = requestAnimationFrame(render)
@@ -275,6 +294,9 @@ onMounted(() => {
   canvas = canvasRef.value
   ctx = canvas.getContext('2d')
   handleResize()
+  
+  // 加载角色图片
+  loadCharacterImages()
   
   // 初始显示2个角色（默认工作模式）
   initCharacters(2)
