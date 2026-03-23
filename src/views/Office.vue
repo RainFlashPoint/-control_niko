@@ -2,6 +2,7 @@
   <div class="container">
     <div class="canvas-container">
       <img ref="bgRef" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
+      <canvas ref="canvasRef" class="canvas"></canvas>
     </div>
     
     <div class="side-panel">
@@ -10,7 +11,7 @@
         <div class="status-item">
           <span class="status-icon">🧑‍💼</span>
           <span class="status-label">大总管</span>
-          <span class="status-value">在线</span>
+          <span class="status-value">{{ mainStatus }}</span>
         </div>
         <div class="status-item">
           <span class="status-icon">📊</span>
@@ -25,17 +26,17 @@
         <div class="status-item">
           <span class="status-icon">💬</span>
           <span class="status-label">今日消息</span>
-          <span class="status-value">128</span>
+          <span class="status-value">{{ messageCount }}</span>
         </div>
         <div class="status-item">
           <span class="status-icon">⏱️</span>
           <span class="status-label">运行时长</span>
-          <span class="status-value">3h 25m</span>
+          <span class="status-value">{{ uptime }}</span>
         </div>
         <div class="status-item">
           <span class="status-icon">⚡</span>
           <span class="status-label">Token消耗</span>
-          <span class="status-value">45.2K</span>
+          <span class="status-value">{{ tokenUsage }}</span>
         </div>
       </div>
     </div>
@@ -87,18 +88,154 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
+const canvasRef = ref(null)
 const bgRef = ref(null)
 const systemStatus = ref('idle')
+const mainStatus = ref('在线')
+const messageCount = ref(128)
+const uptime = ref('3h 25m')
+const tokenUsage = ref('45.2K')
 const visitors = ref([
   { id: 1, name: '访客A', avatar: '🧑‍💻' },
   { id: 2, name: '访客B', avatar: '👨‍🔬' }
 ])
 
+let ctx, canvas, bgImg
+let animationId = null
+let bgLoaded = false
+let frameIndex = 0
+let lastFrameTime = 0
+const FRAME_RATE = 2
+const FRAME_INTERVAL = 1000 / FRAME_RATE
+
+function onBgLoad() {
+  bgLoaded = true
+  bgImg = bgRef.value
+}
+
+// 自动获取OpenClaw状态
+async function fetchStatus() {
+  try {
+    const res = await fetch('http://localhost:3001/api/roles')
+    const data = await res.json()
+    if (data.code === 0 && data.data) {
+      const main = data.data.find(r => r.id === 'main')
+      if (main) {
+        // 根据状态更新UI
+        mainStatus.value = main.status === 'working' ? '工作中' : '在线'
+        
+        // 自动更新角色状态
+        if (main.status === 'working') {
+          systemStatus.value = 'working'
+        } else {
+          systemStatus.value = 'idle'
+        }
+      }
+    }
+  } catch (e) {
+    console.log('获取状态失败', e)
+  }
+}
+
+function getBgRect() {
+  if (!bgImg || !canvas) return null
+  const imgRatio = bgImg.naturalWidth / bgImg.naturalHeight
+  const canvasRatio = canvas.width / canvas.height
+  let w, h, x, y
+  if (canvasRatio > imgRatio) {
+    h = canvas.height
+    w = h * imgRatio
+    x = (canvas.width - w) / 2
+    y = 0
+  } else {
+    w = canvas.width
+    h = w / imgRatio
+    x = 0
+    y = (canvas.height - h) / 2
+  }
+  return { x, y, w, h }
+}
+
+function render() {
+  if (!ctx || !canvas) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  if (!bgLoaded || !bgImg) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  
+  const bg = getBgRect()
+  if (!bg) {
+    animationId = requestAnimationFrame(render)
+    return
+  }
+  
+  // 帧率控制
+  const now = performance.now()
+  if (!lastFrameTime) lastFrameTime = now
+  if (now - lastFrameTime >= FRAME_INTERVAL) {
+    frameIndex = (frameIndex + 1) % 4
+    lastFrameTime = now
+  }
+  
+  // 清除并绘制背景
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
+  
+  // 绘制测试小人 - 根据自动状态
+  const charSize = canvas.width * 0.06
+  const groundY = bg.y + bg.h * 0.88
+  const charX = bg.x + bg.w * 0.5
+  
+  ctx.font = `${charSize}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'bottom'
+  
+  // 根据自动检测的状态显示
+  let displayChar = '🧑‍💻'
+  if (systemStatus.value === 'idle') displayChar = '💤'
+  else if (systemStatus.value === 'working') displayChar = '💻'
+  else if (systemStatus.value === 'sync') displayChar = '🔄'
+  else if (systemStatus.value === 'alert') displayChar = '⚠️'
+  
+  ctx.fillText(displayChar, charX, groundY)
+  
+  animationId = requestAnimationFrame(render)
+}
+
 function removeVisitor(id) {
   visitors.value = visitors.value.filter(v => v.id !== id)
 }
+
+function handleResize() {
+  if (!canvas || !canvasRef.value) return
+  canvas.width = canvasRef.value.parentElement.clientWidth
+  canvas.height = canvasRef.value.parentElement.clientHeight
+}
+
+let statusInterval = null
+
+onMounted(() => {
+  canvas = canvasRef.value
+  ctx = canvas.getContext('2d')
+  handleResize()
+  render()
+  window.addEventListener('resize', handleResize)
+  
+  // 每10秒自动获取一次状态
+  fetchStatus()
+  statusInterval = setInterval(fetchStatus, 10000)
+})
+
+onUnmounted(() => {
+  if (animationId) cancelAnimationFrame(animationId)
+  window.removeEventListener('resize', handleResize)
+  if (statusInterval) clearInterval(statusInterval)
+})
 </script>
 
 <style>
@@ -113,6 +250,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   position: relative;
   background: #0d0d1a;
   overflow: hidden;
+  margin-right: 220px;
 }
 
 .bg-scene {
@@ -123,6 +261,15 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   height: 100%;
   object-fit: cover;
   z-index: 1;
+}
+
+.canvas { 
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
 }
 
 .side-panel {
