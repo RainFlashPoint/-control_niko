@@ -341,7 +341,7 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
 .canvas-container {
   flex: 1;
   position: relative;
-  background: #0d0d1a;
+  background: transparent;
   overflow: hidden;
   margin-right: 220px;
 }
