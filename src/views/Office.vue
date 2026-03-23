@@ -2,7 +2,6 @@
   <div class="container">
     <div class="canvas-container">
       <img ref="bgRef" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
-      <canvas ref="canvasRef" class="canvas"></canvas>
     </div>
     
     <div class="side-panel">
@@ -88,9 +87,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
-const canvasRef = ref(null)
 const bgRef = ref(null)
 const systemStatus = ref('idle')
 const visitors = ref([
@@ -98,154 +96,9 @@ const visitors = ref([
   { id: 2, name: '访客B', avatar: '👨‍🔬' }
 ])
 
-let ctx, canvas, bgImg
-let animationId = null
-let bgLoaded = false
-let charImages = []
-let charLoaded = 0
-let currentFrameIndex = 0
-let lastFrameTime = 0
-
-const FRAME_RATE = 4  // 慢速动画
-const FRAME_INTERVAL = 1000 / FRAME_RATE
-const FRAME_COUNT = 4
-
-const charSrcs = [
-  '/character-blue.png',
-  '/character-purple.png',
-  '/character-orange.png',
-  '/character-green.png',
-  '/character-pink.png'
-]
-
-function onBgLoad() {
-  bgLoaded = true
-  bgImg = bgRef.value
-}
-
-function loadCharacters() {
-  charImages = charSrcs.map(() => null)
-  charSrcs.forEach((src, i) => {
-    const img = new Image()
-    img.onload = () => {
-      charImages[i] = img
-      charLoaded++
-    }
-    img.src = src
-  })
-}
-
-function getBgRect() {
-  if (!bgImg || !canvas) return null
-  
-  const imgRatio = bgImg.naturalWidth / bgImg.naturalHeight
-  const canvasRatio = canvas.width / canvas.height
-  
-  let w, h, x, y
-  if (canvasRatio > imgRatio) {
-    h = canvas.height
-    w = h * imgRatio
-    x = (canvas.width - w) / 2
-    y = 0
-  } else {
-    w = canvas.width
-    h = w / imgRatio
-    x = 0
-    y = (canvas.height - h) / 2
-  }
-  return { x, y, w, h }
-}
-
-function render() {
-  if (!ctx || !canvas) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  
-  // 等待背景加载
-  if (!bgLoaded || !bgImg) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  
-  const bg = getBgRect()
-  if (!bg) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  
-  // 帧率控制
-  const now = performance.now()
-  if (!lastFrameTime) {
-    lastFrameTime = now
-  } else if (now - lastFrameTime >= FRAME_INTERVAL) {
-    currentFrameIndex = (currentFrameIndex + 1) % FRAME_COUNT
-    lastFrameTime = now
-  }
-  
-  // 清除画布
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  
-  // 绘制背景
-  ctx.drawImage(bgImg, bg.x, bg.y, bg.w, bg.h)
-  
-  // 绘制角色
-  if (charLoaded >= charSrcs.length) {
-    const frameCol = currentFrameIndex
-    
-    // 角色大小 - 屏幕宽度的8%
-    const charW = canvas.width * 0.08
-    
-    // 地面位置
-    const groundY = bg.y + bg.h * 0.88
-    
-    // 均匀分布
-    const spacing = bg.w / (charImages.length + 1)
-
-    charImages.forEach((img, i) => {
-      if (!img) return
-      
-      const srcW = img.naturalWidth / FRAME_COUNT
-      const srcH = img.naturalHeight
-      const destW = charW
-      const destH = destW * (srcH / srcW)
-      const posX = bg.x + spacing * (i + 1) - destW / 2
-      
-      ctx.drawImage(
-        img,
-        frameCol * srcW, 0, srcW, srcH,
-        posX, groundY - destH, destW, destH
-      )
-    })
-  }
-  
-  animationId = requestAnimationFrame(render)
-}
-
 function removeVisitor(id) {
   visitors.value = visitors.value.filter(v => v.id !== id)
 }
-
-function handleResize() {
-  if (!canvas || !canvasRef.value) return
-  const container = canvasRef.value.parentElement
-  canvas.width = container.clientWidth
-  canvas.height = container.clientHeight
-}
-
-onMounted(() => {
-  canvas = canvasRef.value
-  ctx = canvas.getContext('2d')
-  handleResize()
-  loadCharacters()
-  render()
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  if (animationId) cancelAnimationFrame(animationId)
-  window.removeEventListener('resize', handleResize)
-})
 </script>
 
 <style>
@@ -270,15 +123,6 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   height: 100%;
   object-fit: cover;
   z-index: 1;
-}
-
-.canvas { 
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
 }
 
 .side-panel {
