@@ -129,7 +129,7 @@ let bgLoaded = false
 let frameIndex = 0
 let lastFrameTime = 0
 let lastMoveTime = 0
-const FRAME_RATE = 8
+const FRAME_RATE = 4
 const FRAME_INTERVAL = 1000 / FRAME_RATE
 
 function onBgLoad() {
