@@ -298,15 +298,17 @@ let statusInterval = null
 
 onMounted(() => {
   canvas = canvasRef.value
-  ctx = canvas.getContext('2d')
+  ctx = canvas.getContext('2d', { alpha: true })  // 启用透明通道
   handleResize()
   
   // 加载角色图片
   loadCharacterImages()
   
-  // 初始显示2个角色（默认工作模式）
-  initCharacters(2)
-  systemStatus.value = 'working'  // 默认工作
+  // 等待图片加载完成后初始化角色
+  setTimeout(() => {
+    initCharacters(2)
+    systemStatus.value = 'working'
+  }, 500)
   
   render()
   window.addEventListener('resize', handleResize)
