@@ -276,8 +276,8 @@ onMounted(() => {
   ctx = canvas.getContext('2d')
   handleResize()
   
-  // 初始显示0个角色，等待API返回
-  initCharacters(0)
+  // 初始显示1个角色，即使API失败也有
+  initCharacters(1)
   
   render()
   window.addEventListener('resize', handleResize)
