@@ -45,9 +45,9 @@
       <div class="ui-section notes">
         <div class="section-title">📝 昨日小记</div>
         <div class="notes-content">
-          <p>• 完成API文档更新和PDF生成</p>
-          <p>• 部署niko1到Cloudflare Workers</p>
-          <p>• 优化办公室像素画</p>
+          <p>• 研究自动化AI测试工具</p>
+          <p>• 探索1人公司创业方向</p>
+          <p>• 优化龙虾控制台展示</p>
         </div>
       </div>
       
@@ -132,7 +132,21 @@ async function fetchStatus() {
         } else {
           systemStatus.value = 'idle'
         }
+        
+        // 更新最后活跃时间
+        if (main.lastActive && main.lastActive !== '-') {
+          const lastTime = new Date(main.lastActive)
+          const now = new Date()
+          const diffMs = now - lastTime
+          const diffMins = Math.floor(diffMs / 60000)
+          if (diffMins < 1) uptime.value = '刚刚'
+          else if (diffMins < 60) uptime.value = diffMins + '分钟'
+          else uptime.value = Math.floor(diffMins / 60) + '小时'
+        }
       }
+      
+      // 更新会话数
+      messageCount.value = data.data.length || 0
     }
   } catch (e) {
     console.log('获取状态失败', e)
