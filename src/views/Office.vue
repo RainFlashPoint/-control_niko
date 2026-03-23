@@ -2,7 +2,12 @@
   <div class="container">
     <div class="canvas-container">
       <img ref="bgRef" src="/bg-scene.png" class="bg-scene" @load="onBgLoad" />
-      <canvas ref="canvasRef" class="canvas"></canvas>
+      <!-- 角色层 -->
+      <div class="characters">
+        <div v-for="(char, i) in characters" :key="i" class="character" :style="getCharacterStyle(char, i)">
+          <img :src="getCharacterImage(char, i)" class="char-img" />
+        </div>
+      </div>
     </div>
     
     <div class="side-panel">
@@ -225,22 +230,34 @@ async function fetchStatus() {
 }
 
 function getBgRect() {
-  if (!bgImg || !canvas) return null
-  return { x: 0, y: 0, w: canvas.width, h: canvas.height }
+  return { w: window.innerWidth - 220, h: window.innerHeight - 110 }
+}
+
+// 获取角色图片URL
+function getCharacterImage(char, i) {
+  const baseIdx = char.index * 4
+  const imgIdx = baseIdx + (frameIndex % 4)
+  return charImageNames[imgIdx]
+}
+
+// 获取角色样式
+function getCharacterStyle(char, i) {
+  const bg = getBgRect()
+  const groundY = bg.h * 0.82
+  const charWidth = bg.w * 0.08
+  const bounceY = systemStatus.value === 'working' 
+    ? Math.sin(frameIndex * 1.5 + i) * 5 
+    : 0
+  
+  return {
+    left: `${char.x * bg.w}px`,
+    bottom: `${groundY - bounceY}px`,
+    width: `${charWidth}px`
+  }
 }
 
 function render() {
-  if (!ctx || !canvas) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  if (!bgLoaded || !bgImg) {
-    animationId = requestAnimationFrame(render)
-    return
-  }
-  
-  const bg = getBgRect()
-  if (!bg) {
+  if (!bgLoaded) {
     animationId = requestAnimationFrame(render)
     return
   }
@@ -251,47 +268,12 @@ function render() {
   if (now - lastFrameTime >= FRAME_INTERVAL) {
     frameIndex = (frameIndex + 1) % 4
     lastFrameTime = now
+    // 触发Vue响应式更新
+    characters.value = [...characters.value]
   }
   
   // 更新角色位置
   updateCharacters()
-  
-  // 清除并绘制背景
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  
-  // 绘制背景图
-  if (bgImg && bgImg.complete) {
-    ctx.globalCompositeOperation = 'source-over'
-    ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
-  }
-  
-  // 绘制角色图片 - 8张单独的图片
-  const charWidth = canvas.width * 0.08
-  const groundY = bg.h * 0.82
-  
-  characters.value.forEach((char, i) => {
-    // 角色1: 图片0,1 | 角色2: 图片2,3
-    const baseIdx = char.index * 4
-    const imgIdx = baseIdx + frameIndex
-    const img = characterImages[imgIdx]
-    if (!img) return
-    
-    const charX = bg.x + bg.w * char.x - charWidth / 2
-    const bounceY = systemStatus.value === 'working' 
-      ? Math.sin(frameIndex * 1.5 + i) * 3 
-      : 0
-    
-    const aspectRatio = img.height / img.width
-    const charHeight = charWidth * aspectRatio
-    
-    // 绘制透明背景图片
-    ctx.globalAlpha = 1.0
-    ctx.drawImage(
-      img,
-      0, 0, img.width, img.height,
-      charX, groundY - charHeight + bounceY, charWidth, charHeight
-    )
-  })
   
   animationId = requestAnimationFrame(render)
 }
@@ -309,19 +291,13 @@ function handleResize() {
 let statusInterval = null
 
 onMounted(() => {
-  canvas = canvasRef.value
-  ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true })
   handleResize()
-  
-  // 加载角色图片
-  loadCharacterImages()
   
   // 等待图片加载完成后初始化角色
   setTimeout(() => {
-    console.log('初始化角色，图片状态:', characterImages.map((img, i) => img ? `img${i} loaded` : `img${i} null`).join(', '))
     initCharacters(2)
     systemStatus.value = 'working'
-  }, 1000)
+  }, 500)
   
   render()
   window.addEventListener('resize', handleResize)
@@ -351,6 +327,27 @@ body { font-family: 'Courier New', monospace; background: #1a1a2e; }
   background: transparent;
   overflow: hidden;
   margin-right: 220px;
+}
+
+.characters {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.character {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.char-img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .bg-scene {
